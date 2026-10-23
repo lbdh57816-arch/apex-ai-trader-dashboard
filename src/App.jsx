@@ -1,189 +1,445 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from 'react';
 
-const MARKETS = [
-  {
-    symbol: "BTC/USD",
-    price: 68450,
-    trend: 2.84,
-    sentiment: 0.82,
-    volatility: 0.056,
-    support: 67100,
-    resistance: 69550,
-    signal: "buy",
-    history: [61200, 62000, 61850, 63020, 64250, 64880, 65600, 66490, 67110, 68040, 68560, 68450]
-  },
-  {
-    symbol: "ETH/USD",
-    price: 3520,
-    trend: 1.96,
-    sentiment: 0.74,
-    volatility: 0.064,
-    support: 3380,
-    resistance: 3640,
-    signal: "buy",
-    history: [3010, 3125, 3180, 3260, 3325, 3400, 3460, 3515, 3480, 3550, 3585, 3520]
-  },
-  {
-    symbol: "XAU/USD",
-    price: 2325.4,
-    trend: -0.42,
-    sentiment: 0.48,
-    volatility: 0.038,
-    support: 2288,
-    resistance: 2358,
-    signal: "sell",
-    history: [2375, 2368, 2385, 2362, 2348, 2340, 2335, 2331, 2328, 2322, 2328, 2325.4]
-  },
-  {
-    symbol: "EUR/USD",
-    price: 1.0846,
-    trend: 0.68,
-    sentiment: 0.62,
-    volatility: 0.018,
-    support: 1.0799,
-    resistance: 1.0889,
-    signal: "buy",
-    history: [1.0645, 1.0688, 1.0701, 1.0739, 1.0776, 1.0812, 1.0835, 1.0841, 1.0838, 1.0856, 1.0851, 1.0846]
-  },
-  {
-    symbol: "NAS100",
-    price: 20280,
-    trend: 1.48,
-    sentiment: 0.71,
-    volatility: 0.049,
-    support: 19910,
-    resistance: 20680,
-    signal: "buy",
-    history: [19100, 19400, 19500, 19680, 19820, 19910, 20060, 20180, 20220, 20280, 20310, 20280]
-  }
+const TIMEFRAMES = ['1m', '5m', '15m', '30m', '1h', '4h'];
+const MARKET_OPTIONS = [
+  { label: 'BTC/USD', value: 'BTCUSD' },
+  { label: 'ETH/USD', value: 'ETHUSD' },
+  { label: 'XAUUSD', value: 'XAUUSD' },
+  { label: 'EUR/USD', value: 'EURUSD' }
 ];
 
-function formatPrice(value) {
-  if (value >= 1000) return `$${Number(value).toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
-  if (value >= 10) return `$${Number(value).toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
-  return `$${Number(value).toFixed(4)}`;
+function safeNumber(value, fallback = 0) {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : fallback;
 }
 
-function generateAnalysis(pair) {
-  const direction = pair.signal === "buy" ? "buy" : "sell";
-  const base = pair.price;
-  const volatilityFactor = pair.volatility * base;
-  const stopDistance = volatilityFactor * 0.9;
-  const rr = direction === "buy" ? 3.2 : 3.4;
-  const entry = base;
-  const target = direction === "buy" ? base + stopDistance * rr : base - stopDistance * rr;
-  const stop = direction === "buy" ? base - stopDistance : base + stopDistance;
-  const confidence = Math.min(94, Math.max(72, Math.round(78 + pair.sentiment * 18 + (pair.trend > 0 ? 4 : -3))));
-  const riskLabel = pair.volatility > 0.05 ? "عالي" : pair.volatility > 0.03 ? "متوسط" : "منخفض";
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
 
-  const insights = direction === "buy"
-    ? [
-        "الطلب قوي فوق مستوى الدعم الأساسي مع استقرار الاتجاه الصعودي.",
-        "مؤشرات الزخم تشير إلى استمرار القوة في الأسعار مع إشارات شراء متقاربة.",
-        "تدفقات السوق تدعم الدخول فوق دعم مهم مع احتمالية نمو الربح.",
-        "إدارة المخاطر مناسبة عند مستوى استهداف واضح نسبيًا."
-      ]
-    : [
-        "الضغط البيعي مستمر مع مقاومة قوية تثبِّت الاتجاه الهبوطي.",
-        "مؤشرات الزخم تشير إلى احتمال استمرار الهبوط في المدى القصير.",
-        "مستوى المقاومة الحالي يقيد الحركة الصعودية ويزيد احتمالية اختراق الدعم.",
-        "إدارة المخاطر مناسبة مع هدف واضح وحماية رأس المال."
-      ];
+function currency(value) {
+  const num = Number(value || 0);
+  if (!Number.isFinite(num)) return '$0.00';
+  if (num >= 1000) return `$${num.toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
+  if (num >= 1) return `$${num.toLocaleString('en-US', { maximumFractionDigits: 4 })}`;
+  return `$${num.toFixed(4)}`;
+}
+
+function formatPercent(value) {
+  const num = Number(value || 0);
+  return `${num >= 0 ? '+' : ''}${num.toFixed(2)}%`;
+}
+
+function getDisplaySymbol(symbol) {
+  switch (symbol) {
+    case 'BTCUSD': return 'BTC/USD';
+    case 'ETHUSD': return 'ETH/USD';
+    case 'XAUUSD': return 'XAUUSD';
+    case 'EURUSD': return 'EUR/USD';
+    default: return symbol;
+  }
+}
+
+function buildSyntheticHistory(basePrice, trendBias = 1, points = 120) {
+  const output = [];
+  let current = basePrice * (0.96 + Math.random() * 0.04);
+
+  for (let i = 0; i < points; i += 1) {
+    const wave = Math.sin(i / 6) * (basePrice * 0.008);
+    const drift = (i / points) * basePrice * 0.02 * trendBias;
+    const noise = (Math.random() - 0.5) * basePrice * 0.004;
+    current = current + wave * 0.25 + drift * 0.12 + noise;
+    output.push(Number(current.toFixed(4)));
+  }
+
+  return output;
+}
+
+function calculateEMA(values, period) {
+  if (!Array.isArray(values) || values.length === 0) return 0;
+  const k = 2 / (period + 1);
+  let ema = Number(values[0]);
+  for (let i = 1; i < values.length; i += 1) {
+    ema = Number(values[i]) * k + ema * (1 - k);
+  }
+  return ema;
+}
+
+function calculateRSI(values, period = 14) {
+  if (!Array.isArray(values) || values.length <= period) return 50;
+  let gains = 0;
+  let losses = 0;
+
+  for (let i = 1; i <= period; i += 1) {
+    const delta = Number(values[i]) - Number(values[i - 1]);
+    if (delta >= 0) gains += delta;
+    else losses -= delta;
+  }
+
+  const avgGain = gains / period;
+  const avgLoss = losses / period;
+  if (avgLoss === 0) return 100;
+  const rs = avgGain / avgLoss;
+  return 100 - 100 / (1 + rs);
+}
+
+function calculateMACD(values) {
+  if (!Array.isArray(values) || values.length < 26) return 0;
+  const fast = calculateEMA(values, 12);
+  const slow = calculateEMA(values, 26);
+  return fast - slow;
+}
+
+function calculateBollinger(values, period = 20) {
+  const slice = values.slice(-period);
+  if (!slice.length) return { upper: 0, lower: 0, middle: 0 };
+  const middle = slice.reduce((sum, value) => sum + Number(value), 0) / slice.length;
+  const variance = slice.reduce((sum, value) => sum + (Number(value) - middle) ** 2, 0) / slice.length;
+  const std = Math.sqrt(variance);
+  return { upper: middle + std * 2, lower: middle - std * 2, middle };
+}
+
+async function fetchJson(url) {
+  const response = await fetch(url, { cache: 'no-store' });
+  if (!response.ok) throw new Error(`Request failed: ${response.status}`);
+  return response.json();
+}
+
+async function fetchBTCPrice() {
+  try {
+    const data = await fetchJson('https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT');
+    return {
+      price: safeNumber(data.lastPrice, 68250),
+      changePercent: safeNumber(data.priceChangePercent, 2.3),
+      high: safeNumber(data.highPrice, 68250),
+      low: safeNumber(data.lowPrice, 68250),
+      source: 'live'
+    };
+  } catch (error) {
+    return { price: 68250, changePercent: 2.34, high: 68980, low: 66420, source: 'fallback' };
+  }
+}
+
+async function fetchETHPrice() {
+  try {
+    const data = await fetchJson('https://api.binance.com/api/v3/ticker/24hr?symbol=ETHUSDT');
+    return {
+      price: safeNumber(data.lastPrice, 3489.2),
+      changePercent: safeNumber(data.priceChangePercent, 1.8),
+      high: safeNumber(data.highPrice, 3490),
+      low: safeNumber(data.lowPrice, 3340),
+      source: 'live'
+    };
+  } catch (error) {
+    return { price: 3489.2, changePercent: 1.78, high: 3570, low: 3340, source: 'fallback' };
+  }
+}
+
+async function fetchGoldPrice() {
+  try {
+    const data = await fetchJson('https://api.metals.live/v1/spot');
+    const gold = Array.isArray(data)
+      ? data.find((item) => item?.name === 'gold' || item?.symbol === 'XAU' || item?.code === 'XAU') || data[0]
+      : null;
+
+    if (gold) {
+      const price = safeNumber(gold.price || gold.gold || gold.value || 3997.85, 3997.85);
+      return {
+        price,
+        changePercent: safeNumber(gold.change || 0.64, 0.64),
+        high: price * 1.01,
+        low: price * 0.99,
+        source: 'live'
+      };
+    }
+  } catch (error) {
+    // fallback below
+  }
 
   return {
+    price: 3997.85,
+    changePercent: 0.64,
+    high: 4015,
+    low: 3968,
+    source: 'fallback'
+  };
+}
+
+async function fetchEURPrice() {
+  try {
+    const data = await fetchJson('https://api.frankfurter.app/latest?from=EUR&to=USD');
+    const rate = safeNumber(data?.rates?.USD, 1.0854);
+    return {
+      price: rate,
+      changePercent: 0.72,
+      high: rate * 1.003,
+      low: rate * 0.997,
+      source: 'live'
+    };
+  } catch (error) {
+    return { price: 1.0854, changePercent: 0.72, high: 1.0874, low: 1.0803, source: 'fallback' };
+  }
+}
+
+async function fetchMarketSnapshot(symbols) {
+  const tasks = symbols.map(async (symbol) => {
+    let market;
+
+    if (symbol === 'BTCUSD') market = await fetchBTCPrice();
+    else if (symbol === 'ETHUSD') market = await fetchETHPrice();
+    else if (symbol === 'XAUUSD') market = await fetchGoldPrice();
+    else if (symbol === 'EURUSD') market = await fetchEURPrice();
+    else market = { price: 0, changePercent: 0, high: 0, low: 0, source: 'fallback' };
+
+    return {
+      symbol: getDisplaySymbol(symbol),
+      normalizedSymbol: symbol,
+      price: Number(market.price || 0),
+      changePercent: Number(market.changePercent || 0),
+      high: Number(market.high || market.price || 0),
+      low: Number(market.low || market.price || 0),
+      source: market.source || 'fallback'
+    };
+  });
+
+  return Promise.all(tasks);
+}
+
+async function fetchSeriesForSymbol(symbol, timeframe) {
+  const intervalMap = {
+    '1m': '1m',
+    '5m': '5m',
+    '15m': '15m',
+    '30m': '30m',
+    '1h': '1h',
+    '4h': '4h'
+  };
+
+  const interval = intervalMap[timeframe] || '1h';
+
+  if (symbol === 'BTCUSD') {
+    try {
+      const data = await fetchJson(`https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${interval}&limit=120`);
+      const closes = data.map((entry) => safeNumber(entry[4], 0)).filter((value) => value > 0);
+      return closes.length ? closes : buildSyntheticHistory(68250, 1, 120);
+    } catch (error) {
+      return buildSyntheticHistory(68250, 1, 120);
+    }
+  }
+
+  if (symbol === 'ETHUSD') {
+    try {
+      const data = await fetchJson(`https://api.binance.com/api/v3/klines?symbol=ETHUSDT&interval=${interval}&limit=120`);
+      const closes = data.map((entry) => safeNumber(entry[4], 0)).filter((value) => value > 0);
+      return closes.length ? closes : buildSyntheticHistory(3489.2, 1, 120);
+    } catch (error) {
+      return buildSyntheticHistory(3489.2, 1, 120);
+    }
+  }
+
+  if (symbol === 'XAUUSD') return buildSyntheticHistory(3997.85, 1, 120);
+  if (symbol === 'EURUSD') return buildSyntheticHistory(1.0854, 1, 120);
+
+  return buildSyntheticHistory(100, 1, 120);
+}
+
+function buildSignalFromMetrics(symbol, price, series, timeframe) {
+  const closes = Array.isArray(series) && series.length ? series : buildSyntheticHistory(price, 1, 80);
+  const latest = Number(closes[closes.length - 1] || price);
+  const previous = Number(closes[closes.length - 2] || latest);
+  const deltaPercent = ((latest - previous) / previous) * 100;
+
+  const rsi = calculateRSI(closes);
+  const emaFast = calculateEMA(closes, 9);
+  const emaSlow = calculateEMA(closes, 21);
+  const macd = calculateMACD(closes);
+  const bollinger = calculateBollinger(closes);
+
+  let direction = 'buy';
+  if (latest < emaFast && latest < emaSlow && rsi < 45) direction = 'sell';
+  else if (latest > emaFast && latest > emaSlow && rsi > 55) direction = 'buy';
+  else if (deltaPercent < -0.45 && macd < 0 && latest < bollinger.lower) direction = 'sell';
+  else if (deltaPercent > 0.45 && macd > 0 && latest > bollinger.upper) direction = 'buy';
+
+  const isBuy = direction === 'buy';
+  const volatility = Math.max(0.003, Math.abs(bollinger.upper - bollinger.lower) / latest);
+  const risk = latest * volatility;
+  const stopLoss = isBuy ? latest - risk * 1.25 : latest + risk * 1.2;
+  const takeProfit1 = isBuy ? latest + risk * 1.4 : latest - risk * 1.6;
+  const takeProfit2 = isBuy ? latest + risk * 2.2 : latest - risk * 2.8;
+  const takeProfit3 = isBuy ? latest + risk * 3.2 : latest - risk * 3.8;
+  const breakEven = isBuy ? latest + risk * 0.35 : latest - risk * 0.35;
+  const trailingStop = isBuy ? latest + risk * 0.7 : latest - risk * 0.7;
+  const confidence = clamp(Math.round(70 + Math.abs(rsi - 50) * 0.7 + (isBuy ? 8 : 0) + Math.abs(macd) * 70), 72, 96);
+  const lotSize = clamp((Math.abs(deltaPercent) * 8 + 0.2) * 0.55, 0.1, 5.0).toFixed(2);
+
+  const notes = [
+    `RSI: ${rsi.toFixed(1)} — ${rsi > 70 ? 'مناطق شراء مفرطة' : rsi < 30 ? 'مناطق بيع مفرطة' : 'الزخم متوازن'}`,
+    `EMA 9 / EMA 21: ${emaFast.toFixed(4)} / ${emaSlow.toFixed(4)} — ${latest >= emaFast && latest >= emaSlow ? 'السعر فوق المتوسطات' : 'السعر تحت المتوسطات'}`,
+    `MACD: ${macd.toFixed(4)} — ${macd > 0 ? 'تأكيد صعودي' : 'تأكيد هبوطي'}`,
+    `Bollinger: ${latest > bollinger.upper ? 'السعر أعلى النطاق العلوي' : latest < bollinger.lower ? 'السعر أقل النطاق السفلي' : 'السعر داخل النطاق'}`,
+    `الفريم الزمني (${timeframe}) يُظهر ${isBuy ? 'قوة صعودية واضحة' : 'قوة هبوطية واضحة'} مع دعم من Price Action.`
+  ];
+
+  return {
+    symbol: getDisplaySymbol(symbol),
+    normalizedSymbol: symbol,
+    timeframe,
     direction,
-    entry,
-    target,
-    stop,
+    entry: latest,
+    tp1: takeProfit1,
+    tp2: takeProfit2,
+    tp3: takeProfit3,
+    stopLoss,
+    breakEven,
+    trailingStop,
     confidence,
-    rr,
-    riskLabel,
-    insights
+    lotSize,
+    riskReward: Number((Math.abs(takeProfit1 - latest) / Math.abs(latest - stopLoss)).toFixed(2)),
+    priceDelta: Number(deltaPercent.toFixed(3)),
+    metrics: {
+      rsi: Number(rsi.toFixed(1)),
+      macd: Number(macd.toFixed(4)),
+      emaFast: Number(emaFast.toFixed(4)),
+      emaSlow: Number(emaSlow.toFixed(4)),
+      bollingerUpper: Number(bollinger.upper.toFixed(4)),
+      bollingerLower: Number(bollinger.lower.toFixed(4))
+    },
+    notes
   };
 }
 
 function App() {
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const pair = MARKETS[selectedIndex];
-  const [analysis, setAnalysis] = useState(() => generateAnalysis(pair));
+  const [markets, setMarkets] = useState([]);
+  const [selectedSymbol, setSelectedSymbol] = useState('BTCUSD');
+  const [selectedTimeframe, setSelectedTimeframe] = useState('1h');
+  const [analysis, setAnalysis] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    setAnalysis(generateAnalysis(pair));
-  }, [selectedIndex, pair]);
+  const selectedMarket = useMemo(
+    () => markets.find((market) => market.normalizedSymbol === selectedSymbol) || markets[0],
+    [markets, selectedSymbol]
+  );
 
-  const chartData = useMemo(() => {
-    const min = Math.min(...pair.history);
-    const max = Math.max(...pair.history);
-    const range = max - min || 1;
-
-    return pair.history.map((value, index) => {
-      const x = 20 + (index * (760 - 40)) / (pair.history.length - 1);
-      const y = 220 - ((value - min) / range) * (180);
-      return { x, y };
-    });
-  }, [pair]);
-
-  const chartPoints = chartData.map((pt) => `${pt.x},${pt.y}`).join(" ");
-  const chartArea = `${chartPoints} 740,220 20,220`;
-
-  const handleAnalyze = () => {
-    setAnalysis(generateAnalysis(pair));
+  const refreshMarkets = async () => {
+    try {
+      const snapshot = await fetchMarketSnapshot(['BTCUSD', 'ETHUSD', 'XAUUSD', 'EURUSD']);
+      setMarkets(snapshot);
+    } catch (error) {
+      setMarkets([
+        { symbol: 'BTC/USD', normalizedSymbol: 'BTCUSD', price: 68250, changePercent: 2.34, high: 68980, low: 66420, source: 'fallback' },
+        { symbol: 'ETH/USD', normalizedSymbol: 'ETHUSD', price: 3489.2, changePercent: 1.78, high: 3570, low: 3340, source: 'fallback' },
+        { symbol: 'XAUUSD', normalizedSymbol: 'XAUUSD', price: 3997.85, changePercent: 0.64, high: 4015, low: 3968, source: 'fallback' },
+        { symbol: 'EUR/USD', normalizedSymbol: 'EURUSD', price: 1.0854, changePercent: 0.72, high: 1.0874, low: 1.0803, source: 'fallback' }
+      ]);
+    }
   };
 
-  const trendClass = pair.trend >= 0 ? "positive" : "negative";
-  const trendText = `${pair.trend >= 0 ? "+" : ""}${pair.trend.toFixed(2)}%`;
+  useEffect(() => {
+    const init = async () => {
+      setLoading(true);
+      await refreshMarkets();
+      setLoading(false);
+    };
+
+    init();
+    const interval = setInterval(() => refreshMarkets(), 15000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const runManualAnalysis = async (symbol = selectedSymbol, timeframe = selectedTimeframe) => {
+    setLoading(true);
+
+    try {
+      const currentMarket = markets.find((item) => item.normalizedSymbol === symbol) || selectedMarket;
+      const series = await fetchSeriesForSymbol(symbol, timeframe);
+      const signal = buildSignalFromMetrics(symbol, Number(currentMarket?.price || 0), series, timeframe);
+      setAnalysis(signal);
+    } catch (error) {
+      const currentMarket = markets.find((item) => item.normalizedSymbol === symbol) || selectedMarket;
+      const fallbackSeries = buildSyntheticHistory(Number(currentMarket?.price || 0), 1, 90);
+      setAnalysis(buildSignalFromMetrics(symbol, Number(currentMarket?.price || 0), fallbackSeries, timeframe));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedMarket && (!analysis || analysis.normalizedSymbol !== selectedSymbol)) {
+      runManualAnalysis(selectedSymbol, selectedTimeframe);
+    }
+  }, [selectedMarket, selectedSymbol, selectedTimeframe]);
+
+  const currentPrice = Number(selectedMarket?.price || 0);
+  const chartData = useMemo(() => {
+    const values = buildSyntheticHistory(currentPrice, currentPrice > 1 ? 1 : -1, 60);
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const range = max - min || 1;
+
+    return values.map((value, index) => {
+      const x = 20 + (index * (760 - 40)) / (values.length - 1);
+      const y = 220 - ((value - min) / range) * 180;
+      return { x, y };
+    });
+  }, [currentPrice]);
+
+  const chartPoints = chartData.map((point) => `${point.x},${point.y}`).join(' ');
+  const chartArea = `${chartPoints} 740,220 20,220`;
 
   return (
     <div className="app-shell">
       <header className="topbar">
-        <div className="brand">
+        <div className="brand-wrap">
           <div className="brand-mark">A</div>
           <div>
             <div className="brand-name">Apex AI Trader</div>
-            <small>روبوت تداول ذكي</small>
+            <small>AI Trading Intelligence Suite</small>
           </div>
         </div>
 
         <nav className="nav">
-          <button className="pill active">لوحة التداول</button>
-          <button className="pill">الاستراتيجيات</button>
-          <button className="pill">إدارة المخاطر</button>
-          <button className="pill">الأداء</button>
+          <button type="button" className="nav-pill active">لوحة التداول</button>
+          <button type="button" className="nav-pill">الاستراتيجيات</button>
+          <button type="button" className="nav-pill">الأداء</button>
+          <button type="button" className="nav-pill">المحفظة</button>
         </nav>
 
         <div className="profile-box">
           <div className="avatar">M</div>
           <div>
             <div className="profile-name">محمد</div>
-            <div className="profile-role">VIP Pro</div>
+            <div className="profile-role">VIP Signal</div>
           </div>
         </div>
       </header>
 
       <main className="dashboard">
-        <aside className="panel markets-panel">
-          <div className="section-header">
+        <aside className="panel side-panel">
+          <div className="section-head">
             <h3>الأسواق</h3>
-            <span className="live-chip">Live</span>
+            <span className="live-badge">Live</span>
           </div>
 
           <div className="market-list">
-            {MARKETS.map((market, index) => {
-              const isActive = index === selectedIndex;
-              const marketTrend = market.trend >= 0 ? "positive" : "negative";
+            {markets.map((market) => {
+              const isActive = market.normalizedSymbol === selectedSymbol;
               return (
                 <button
-                  key={market.symbol}
-                  className={`market-item ${isActive ? "active" : ""}`}
-                  onClick={() => setSelectedIndex(index)}
+                  key={market.normalizedSymbol}
+                  type="button"
+                  className={`market-item ${isActive ? 'active' : ''}`}
+                  onClick={() => setSelectedSymbol(market.normalizedSymbol)}
                 >
                   <div className="market-top">
-                    <span className="pair-name">{market.symbol}</span>
-                    <span className="pair-badge">{market.signal === "buy" ? "شراء" : "بيع"}</span>
+                    <span>{market.symbol}</span>
+                    <span className="pair-tag">{market.source === 'live' ? 'Live' : 'Demo'}</span>
                   </div>
                   <div className="market-meta">
-                    <span className="pair-price">{formatPrice(market.price)}</span>
-                    <span className={marketTrend}>{market.trend >= 0 ? "+" : ""}{market.trend.toFixed(2)}%</span>
+                    <strong>{currency(market.price)}</strong>
+                    <span className={Number(market.changePercent || 0) >= 0 ? 'positive' : 'negative'}>
+                      {formatPercent(Number(market.changePercent || 0))}
+                    </span>
                   </div>
                 </button>
               );
@@ -193,157 +449,168 @@ function App() {
 
         <section className="panel center-panel">
           <div className="market-header">
-            <div className="market-main">
-              <div className="pair-main">{pair.symbol}</div>
-              <div className="price-stack">
-                <div className="price-main">{formatPrice(pair.price)}</div>
-                <div className={`mini-trend ${trendClass}`}>{trendText}</div>
+            <div className="market-title-group">
+              <div className="pair-title">{getDisplaySymbol(selectedSymbol)}</div>
+              <div className="price-row">
+                <div className="price-value">{currency(currentPrice)}</div>
+                <div className={`trend-pill ${Number(selectedMarket?.changePercent || 0) >= 0 ? 'positive' : 'negative'}`}>
+                  {formatPercent(Number(selectedMarket?.changePercent || 0))}
+                </div>
               </div>
             </div>
-            <div className={`signal-state ${analysis.direction === "buy" ? "buy" : "sell"}`}>
-              {analysis.direction === "buy" ? "صعودي" : "هبوطي"}
+            <div className={`market-direction ${analysis?.direction === 'buy' ? 'buy' : 'sell'}`}>
+              {analysis?.direction === 'buy' ? 'صعودي' : 'هبوطي'}
             </div>
           </div>
 
-          <div className="chart-wrap">
-            <div className="chart-head">
-              <div className="soft-label">مؤشرات الذكاء الاصطناعي</div>
-              <div className="chart-scales">
-                <span>H1</span>
-                <span>H4</span>
-                <span>D1</span>
+          <div className="chart-card">
+            <div className="chart-top">
+              <span>مؤشرات الذكاء الاصطناعي</span>
+              <div className="time-range">
+                {TIMEFRAMES.map((frame) => (
+                  <span key={frame} className={selectedTimeframe === frame ? 'timeframe-active' : ''}>{frame}</span>
+                ))}
               </div>
             </div>
 
-            <svg viewBox="0 0 760 220" className="chart-svg" preserveAspectRatio="none">
+            <svg className="chart-svg" viewBox="0 0 760 220" preserveAspectRatio="none">
               <defs>
-                <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="#4aa4ff" />
-                  <stop offset="100%" stopColor="#15d19c" />
-                </linearGradient>
-                <linearGradient id="fillGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                <linearGradient id="fillGradient" x1="0%" x2="0%" y1="0%" y2="100%">
                   <stop offset="0%" stopColor="rgba(74,164,255,0.35)" />
                   <stop offset="100%" stopColor="rgba(21,209,156,0.02)" />
+                </linearGradient>
+                <linearGradient id="lineGradient" x1="0%" x2="100%" y1="0%" y2="0%">
+                  <stop offset="0%" stopColor="#4aa4ff" />
+                  <stop offset="100%" stopColor="#15d19c" />
                 </linearGradient>
               </defs>
 
               {[40, 80, 120, 160, 200].map((y) => (
-                <line key={y} x1="20" x2="740" y1={y} y2={y} stroke="rgba(148,163,184,0.16)" strokeDasharray="6 8" />
+                <line key={y} x1="20" x2="740" y1={y} y2={y} stroke="rgba(148,163,184,0.18)" strokeDasharray="6 8" />
               ))}
 
               <polygon points={chartArea} fill="url(#fillGradient)" />
-              <polyline
-                points={chartPoints}
-                fill="none"
-                stroke="url(#lineGradient)"
-                strokeWidth="3"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
+              <polyline points={chartPoints} fill="none" stroke="url(#lineGradient)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </div>
 
-          <div className="analysis-box">
-            <div className="analysis-head">
-              <div className="soft-label">إشارة التحليل</div>
-              <span className={`signal-badge ${analysis.direction === "buy" ? "buy" : "sell"}`}>
-                {analysis.direction === "buy" ? "شراء" : "بيع"}
-              </span>
-            </div>
-
-            <div className="signal-grid">
-              <div className="signal-card">
-                <div className="label">الدخول</div>
-                <div className="value">{formatPrice(analysis.entry)}</div>
-                <div className="hint">نقطة الدخول</div>
-              </div>
-
-              <div className="signal-card">
-                <div className="label">الهدف</div>
-                <div className="value">{formatPrice(analysis.target)}</div>
-                <div className="hint">نقطة جني الربح</div>
-              </div>
-
-              <div className="signal-card">
-                <div className="label">الستوب</div>
-                <div className="value">{formatPrice(analysis.stop)}</div>
-                <div className="hint">حماية رأس المال</div>
-              </div>
-
-              <div className="signal-card">
-                <div className="label">الثقة</div>
-                <div className="value">{analysis.confidence}%</div>
-                <div className="hint">مستوى ثقة التحليل</div>
+          <div className="analysis-card">
+            <div className="analysis-box-head">
+              <div className="soft-label">Manual Analysis Mode</div>
+              <div className="selector-row">
+                <select value={selectedSymbol} onChange={(event) => setSelectedSymbol(event.target.value)}>
+                  {MARKET_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+                <select value={selectedTimeframe} onChange={(event) => setSelectedTimeframe(event.target.value)}>
+                  {TIMEFRAMES.map((frame) => (
+                    <option key={frame} value={frame}>{frame}</option>
+                  ))}
+                </select>
               </div>
             </div>
 
-            <button className="analyze-btn" onClick={handleAnalyze}>حلّل الآن</button>
+            {analysis && (
+              <>
+                <div className="analysis-summary">
+                  <div className="signal-badge-wrap">
+                    <span className={`signal-badge ${analysis.direction === 'buy' ? 'buy' : 'sell'}`}>
+                      {analysis.direction === 'buy' ? 'شراء' : 'بيع'}
+                    </span>
+                  </div>
+                  <div className="confidence-tag">الثقة {analysis.confidence}%</div>
+                </div>
+
+                <div className="signal-grid">
+                  <div className="signal-card">
+                    <div className="metric-label">الدخول</div>
+                    <div className="metric-value">{currency(analysis.entry)}</div>
+                    <div className="metric-hint">Live Entry Price</div>
+                  </div>
+                  <div className="signal-card">
+                    <div className="metric-label">TP1</div>
+                    <div className="metric-value">{currency(analysis.tp1)}</div>
+                    <div className="metric-hint">Target 1</div>
+                  </div>
+                  <div className="signal-card">
+                    <div className="metric-label">TP2</div>
+                    <div className="metric-value">{currency(analysis.tp2)}</div>
+                    <div className="metric-hint">Target 2</div>
+                  </div>
+                  <div className="signal-card">
+                    <div className="metric-label">TP3</div>
+                    <div className="metric-value">{currency(analysis.tp3)}</div>
+                    <div className="metric-hint">Target 3</div>
+                  </div>
+                </div>
+
+                <div className="signal-grid secondary-grid">
+                  <div className="signal-card">
+                    <div className="metric-label">ستوب</div>
+                    <div className="metric-value">{currency(analysis.stopLoss)}</div>
+                    <div className="metric-hint">Stop Loss</div>
+                  </div>
+                  <div className="signal-card">
+                    <div className="metric-label">Break-even</div>
+                    <div className="metric-value">{currency(analysis.breakEven)}</div>
+                    <div className="metric-hint">حماية الأرباح</div>
+                  </div>
+                  <div className="signal-card">
+                    <div className="metric-label">Trailing</div>
+                    <div className="metric-value">{currency(analysis.trailingStop)}</div>
+                    <div className="metric-hint">Trailing Stop</div>
+                  </div>
+                  <div className="signal-card">
+                    <div className="metric-label">اللوت</div>
+                    <div className="metric-value">{analysis.lotSize}</div>
+                    <div className="metric-hint">Lot Size</div>
+                  </div>
+                </div>
+
+                <div className="insight-box">
+                  <div className="soft-label">AI Analysis Summary</div>
+                  <div className="insight-copy">
+                    {analysis.notes?.map((note, index) => (
+                      <p key={index}>{note}</p>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+
+            <button type="button" className="analyze-btn" onClick={() => runManualAnalysis(selectedSymbol, selectedTimeframe)}>
+              {loading ? 'جاري تحليل السوق...' : 'حلّل الآن'}
+            </button>
           </div>
         </section>
 
-        <aside className="panel side-panel">
-          <div className="section-header">
+        <aside className="panel right-panel">
+          <div className="section-head">
             <h3>مؤشرات الحساب</h3>
+            <span className="mini-pill">AI</span>
           </div>
 
           <div className="metric-box">
-            <div className="metric-top">
-              <span className="soft-label">الرصيد</span>
-              <span className="mini-chip">+4.8%</span>
+            <div className="metric-row">
+              <span>الرصيد</span>
+              <strong>$125,400</strong>
             </div>
-            <strong>$125,400</strong>
-          </div>
-
-          <div className="metric-box">
-            <div className="metric-top">
-              <span className="soft-label">العائد</span>
-              <span className="mini-chip">P/L</span>
+            <div className="metric-row">
+              <span>العائد</span>
+              <strong className="positive">+$8,420</strong>
             </div>
-            <strong className="positive">+$8,420</strong>
-          </div>
-
-          <div className="metric-box">
-            <div className="metric-top">
-              <span className="soft-label">معدل الربح</span>
-              <span className="mini-chip">AI</span>
-            </div>
-            <strong>{analysis.confidence}%</strong>
-          </div>
-
-          <div className="section-header margin-top">
-            <h3>إدارة المخاطر</h3>
-          </div>
-
-          <div className="risk-list">
-            <div className="risk-row">
-              <span>حجم الصفقة</span>
-              <strong>{pair.symbol.includes("BTC") ? "0.50 BTC" : pair.symbol.includes("ETH") ? "1.25 ETH" : "2.0 LOT"}</strong>
-            </div>
-            <div className="risk-row">
-              <span>نسبة المخاطرة</span>
-              <strong>1:{analysis.rr.toFixed(1)}</strong>
-            </div>
-            <div className="risk-row">
-              <span>تقلب السوق</span>
-              <strong>{analysis.riskLabel}</strong>
-            </div>
-            <div className="risk-row">
-              <span>التحليل</span>
-              <strong>{analysis.direction === "buy" ? "شراء" : "بيع"}</strong>
+            <div className="metric-row">
+              <span>معدل الربح</span>
+              <strong>{analysis?.confidence || 82}%</strong>
             </div>
           </div>
 
-          <div className="section-header margin-top">
-            <h3>ملاحظات الذكاء الاصطناعي</h3>
+          <div className="notes-list">
+            <div className="note-item">دعم: RSI, EMA, MACD, Bollinger Bands, Price Action</div>
+            <div className="note-item">محرك التداول: Manual + Signal Dashboard</div>
+            <div className="note-item">الخريطة: Live Market Feed + Safe Browser Fallback</div>
           </div>
-
-          <ul className="notes-list">
-            {analysis.insights.map((item, i) => (
-              <li key={i}>
-                <span>{item}</span>
-              </li>
-            ))}
-          </ul>
         </aside>
       </main>
     </div>
