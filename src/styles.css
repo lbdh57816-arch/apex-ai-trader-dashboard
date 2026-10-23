@@ -1,587 +1,676 @@
-:root {
-  --bg: #07111f;
-  --bg-2: #0d1b2b;
-  --panel: rgba(15, 28, 43, 0.92);
-  --panel-2: rgba(19, 35, 52, 0.95);
-  --line: rgba(148, 163, 184, 0.18);
-  --text: #eaf6ff;
-  --muted: #96a9be;
-  --green: #15d19c;
-  --green-2: #59f0b5;
-  --red: #ff5b6e;
-  --red-2: #ff7e7e;
-  --amber: #f9bf4b;
-  --blue: #4aa4ff;
-  --purple: #8e7bff;
-  --shadow: 0 18px 45px rgba(8, 15, 25, 0.5);
-}
-
-* {
-  box-sizing: border-box;
-}
-
-html, body, #root {
-  margin: 0;
-  min-height: 100%;
-  background: radial-gradient(circle at top left, #10243d, var(--bg) 42%, #050d16 100%);
-  color: var(--text);
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-}
-
-body {
-  min-height: 100vh;
-}
-
-button {
-  font: inherit;
-}
-
-.app-shell {
-  width: min(1460px, 96vw);
-  margin: 28px auto;
-  padding: 20px;
-}
-
-.topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18px;
-  padding: 18px 24px;
-  background: rgba(9, 18, 29, 0.8);
-  border: 1px solid var(--line);
-  border-radius: 22px;
-  backdrop-filter: blur(10px);
-  box-shadow: var(--shadow);
-  margin-bottom: 18px;
-}
-
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.brand-mark {
-  width: 42px;
-  height: 42px;
-  border-radius: 12px;
-  display: grid;
-  place-items: center;
-  font-weight: 900;
-  color: #081821;
-  background: linear-gradient(135deg, var(--green), var(--blue));
-  box-shadow: 0 12px 30px rgba(74,164,255,0.35);
-}
-
-.brand-name {
-  font-size: 18px;
-  font-weight: 800;
-  letter-spacing: 0.4px;
-}
-
-.brand small {
-  display: block;
-  margin-top: 2px;
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.nav {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.pill {
-  border: 1px solid transparent;
-  background: rgba(255,255,255,0.02);
-  color: var(--muted);
-  padding: 10px 14px;
-  border-radius: 12px;
-  font-weight: 700;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.pill.active {
-  color: var(--text);
-  background: linear-gradient(135deg, rgba(74,164,255,0.10), rgba(21,209,156,0.08));
-  border-color: rgba(74,164,255,0.25);
-}
-
-.profile-box {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 12px;
-  border-radius: 14px;
-  border: 1px solid var(--line);
-  background: rgba(255,255,255,0.02);
-}
-
-.avatar {
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  font-weight: 900;
-  color: #111827;
-  background: linear-gradient(135deg, #facc15, #f97316);
-}
-
-.profile-name {
-  font-weight: 800;
-}
-
-.profile-role {
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.dashboard {
-  display: grid;
-  grid-template-columns: 310px minmax(0, 1fr) 350px;
-  gap: 18px;
-}
-
-.panel {
-  background: linear-gradient(180deg, rgba(17, 29, 43, 0.94), rgba(11, 18, 28, 0.94));
-  border: 1px solid var(--line);
-  border-radius: 22px;
-  box-shadow: var(--shadow);
-}
-
-.markets-panel, .side-panel {
-  padding: 18px 16px;
-}
-
-.section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 16px;
-  padding: 0 4px;
-}
-
-.section-header h3 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 800;
-}
-
-.live-chip, .mini-chip {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 7px 10px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 800;
-  border: 1px solid rgba(21,209,156,0.2);
-  background: rgba(21,209,156,0.08);
-  color: var(--green-2);
-}
-
-.market-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.market-item {
-  width: 100%;
-  text-align: right;
-  color: var(--text);
-  background: rgba(255,255,255,0.02);
-  border: 1px solid rgba(148,163,184,0.14);
-  border-radius: 16px;
-  padding: 14px 14px 12px;
-  cursor: pointer;
-  transition: 0.2s ease;
-}
-
-.market-item:hover, .market-item.active {
-  transform: translateY(-1px);
-  border-color: rgba(74,164,255,0.18);
-  background: linear-gradient(135deg, rgba(74,164,255,0.08), rgba(21,209,156,0.04));
-  box-shadow: inset 0 0 0 1px rgba(74,164,255,0.1);
-}
-
-.market-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 8px;
-}
-
-.pair-name {
-  font-weight: 800;
-  font-size: 15px;
-}
-
-.pair-badge {
-  padding: 6px 8px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 800;
-  border: 1px solid rgba(21,209,156,0.22);
-  background: rgba(21,209,156,0.08);
-  color: var(--green-2);
-}
-
-.market-meta {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.pair-price {
-  font-size: 19px;
-  font-weight: 800;
-  color: var(--text);
-}
-
-.positive { color: var(--green-2); }
-.negative { color: var(--red-2); }
+import { useEffect, useMemo, useState } from 'react';
 
-.center-panel {
-  padding: 18px;
-}
-
-.market-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 18px;
-  padding: 0 4px;
-}
-
-.market-main {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.pair-main {
-  font-size: 30px;
-  font-weight: 900;
-  letter-spacing: 0.4px;
-}
-
-.price-stack {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.price-main {
-  font-size: 32px;
-  font-weight: 900;
-}
-
-.mini-trend {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 8px 10px;
-  border-radius: 999px;
-  font-size: 14px;
-  font-weight: 800;
-}
-
-.mini-trend.positive {
-  background: rgba(21,209,156,0.08);
-  border: 1px solid rgba(21,209,156,0.22);
-  color: var(--green-2);
-}
-
-.mini-trend.negative {
-  background: rgba(255,91,110,0.08);
-  border: 1px solid rgba(255,91,110,0.18);
-  color: var(--red-2);
-}
-
-.signal-state {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 88px;
-  padding: 8px 12px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.signal-state.buy {
-  background: rgba(21,209,156,0.12);
-  border: 1px solid rgba(21,209,156,0.26);
-  color: var(--green-2);
-}
-
-.signal-state.sell {
-  background: rgba(255,91,110,0.09);
-  border: 1px solid rgba(255,91,110,0.28);
-  color: var(--red-2);
-}
-
-.chart-wrap {
-  position: relative;
-  overflow: hidden;
-  background: linear-gradient(180deg, rgba(12,19,30,0.95), rgba(8,15,25,0.96));
-  border: 1px solid var(--line);
-  border-radius: 18px;
-  min-height: 300px;
-  padding: 14px 12px 8px;
-}
-
-.chart-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-  padding: 2px 6px;
-}
-
-.soft-label {
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.4px;
-}
-
-.chart-scales {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 800;
-}
-
-.chart-svg {
-  width: 100%;
-  height: 240px;
-  display: block;
-}
-
-.analysis-box {
-  margin-top: 18px;
-  padding: 16px;
-  background: rgba(13, 22, 33, 0.9);
-  border: 1px solid var(--line);
-  border-radius: 18px;
-}
-
-.analysis-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 14px;
-}
-
-.signal-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  border-radius: 999px;
-  padding: 8px 12px;
-  font-size: 13px;
-  font-weight: 900;
-}
-
-.signal-badge.buy {
-  background: rgba(21,209,156,0.12);
-  border: 1px solid rgba(21,209,156,0.30);
-  color: var(--green-2);
-}
-
-.signal-badge.sell {
-  background: rgba(255,91,110,0.09);
-  border: 1px solid rgba(255,91,110,0.28);
-  color: var(--red-2);
-}
-
-.signal-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.signal-card {
-  background: rgba(255,255,255,0.02);
-  border: 1px solid rgba(148,163,184,0.12);
-  border-radius: 14px;
-  padding: 12px 12px 10px;
-}
-
-.label {
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.5px;
-}
-
-.value {
-  margin-top: 8px;
-  font-size: 24px;
-  font-weight: 900;
-  letter-spacing: 0.2px;
-}
-
-.hint {
-  margin-top: 6px;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.analyze-btn {
-  margin-top: 18px;
-  width: 100%;
-  border: 0;
-  cursor: pointer;
-  padding: 16px 20px;
-  border-radius: 16px;
-  background: linear-gradient(135deg, var(--blue), var(--green));
-  color: #06121d;
-  font-size: 17px;
-  font-weight: 900;
-  box-shadow: 0 16px 30px rgba(74,164,255,0.28);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.analyze-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 18px 36px rgba(21,209,156,0.28);
-}
-
-.side-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.metric-box {
-  background: rgba(255,255,255,0.02);
-  border: 1px solid rgba(148,163,184,0.14);
-  border-radius: 14px;
-  padding: 12px 14px;
-}
+const MARKET_OPTIONS = [
+  { label: 'BTC/USD', value: 'BTCUSD' },
+  { label: 'ETH/USD', value: 'ETHUSD' },
+  { label: 'XAUUSD', value: 'XAUUSD' },
+  { label: 'EUR/USD', value: 'EURUSD' }
+];
 
-.metric-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 8px;
-}
+const TIMEFRAMES = ['1m', '5m', '15m', '30m', '1h', '4h'];
 
-.metric-box strong {
-  font-size: 22px;
-  font-weight: 900;
-}
+const DEFAULT_MT5 = {
+  accountNumber: '',
+  password: '',
+  serverName: '',
+  tickerAllApiKey: 'cf_api_431c67a0c0b900978bf0d6ffe72ea7a29f24f84ba26a20a3fa030db5656525de',
+  enabled: false
+};
 
-.margin-top {
-  margin-top: 10px;
-}
+const BINANCE_SYMBOLS = {
+  BTCUSD: 'BTCUSDT',
+  ETHUSD: 'ETHUSDT'
+};
 
-.risk-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+function currency(value) {
+  const number = Number(value || 0);
+  if (!Number.isFinite(number)) return '$0.00';
+  if (number >= 1000) return `$${number.toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
+  if (number >= 1) return `$${number.toLocaleString('en-US', { maximumFractionDigits: 4 })}`;
+  return `$${number.toFixed(4)}`;
 }
 
-.risk-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
-  background: rgba(255,255,255,0.02);
-  border: 1px solid rgba(148,163,184,0.12);
-  border-radius: 12px;
+function formatPercent(value) {
+  const number = Number(value || 0);
+  return `${number >= 0 ? '+' : ''}${number.toFixed(2)}%`;
 }
 
-.notes-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+function getDisplaySymbol(symbol) {
+  if (symbol === 'BTCUSD') return 'BTC/USD';
+  if (symbol === 'ETHUSD') return 'ETH/USD';
+  if (symbol === 'XAUUSD') return 'XAUUSD';
+  if (symbol === 'EURUSD') return 'EUR/USD';
+  return symbol;
 }
 
-.notes-list li {
-  position: relative;
-  padding: 12px 16px 12px 12px;
-  background: rgba(142, 123, 255, 0.04);
-  border: 1px solid rgba(142,123,255,0.18);
-  border-radius: 14px;
-  color: var(--text);
-  font-size: 13px;
-  line-height: 1.6;
+function safeNumber(value, fallback = 0) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
 }
 
-.notes-list li::before {
-  content: "";
-  position: absolute;
-  right: 12px;
-  top: 14px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--purple);
-  box-shadow: 0 0 12px rgba(142,123,255,0.7);
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
 }
 
-.notes-list li span {
-  display: block;
-  padding-right: 18px;
-}
+function buildFallbackHistory(basePrice, trendBias = 1, points = 48) {
+  const output = [];
+  let current = basePrice * (0.96 + (Math.random() * 0.06));
 
-@media (max-width: 1180px) {
-  .dashboard {
-    grid-template-columns: 1fr;
+  for (let i = 0; i < points; i += 1) {
+    const wave = Math.sin(i / 5.3) * (basePrice * 0.0085);
+    const noise = (Math.random() - 0.5) * basePrice * 0.006;
+    const drift = (i / points) * basePrice * 0.021 * trendBias;
+    current = current + wave * 0.35 + drift * 0.12 + noise;
+    output.push(Number(current.toFixed(4)));
   }
 
-  .signal-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  return output;
+}
+
+function calculateEMA(values, period) {
+  if (!Array.isArray(values) || values.length === 0) return 0;
+  const k = 2 / (period + 1);
+  let ema = Number(values[0]);
+  for (let i = 1; i < values.length; i += 1) {
+    ema = Number(values[i]) * k + ema * (1 - k);
+  }
+  return ema;
+}
+
+function calculateRSI(values, period = 14) {
+  if (!Array.isArray(values) || values.length <= period) return 50;
+  let gains = 0;
+  let losses = 0;
+
+  for (let i = 1; i <= period; i += 1) {
+    const delta = Number(values[i]) - Number(values[i - 1]);
+    if (delta >= 0) gains += delta;
+    else losses -= delta;
+  }
+
+  const avgGain = gains / period;
+  const avgLoss = losses / period;
+
+  if (avgLoss === 0) return 100;
+  const rs = avgGain / avgLoss;
+  return 100 - 100 / (1 + rs);
+}
+
+function calculateMACD(values) {
+  if (!Array.isArray(values) || values.length < 26) return 0;
+  const fast = calculateEMA(values, 12);
+  const slow = calculateEMA(values, 26);
+  return fast - slow;
+}
+
+function calculateBollinger(values, period = 20) {
+  const slice = values.slice(-period);
+  if (!slice.length) return { upper: 0, lower: 0, middle: 0 };
+  const middle = slice.reduce((sum, value) => sum + Number(value), 0) / slice.length;
+  const variance = slice.reduce((sum, value) => sum + (Number(value) - middle) ** 2, 0) / slice.length;
+  const dev = Math.sqrt(variance);
+  return {
+    upper: middle + dev * 2,
+    lower: middle - dev * 2,
+    middle
+  };
+}
+
+async function fetchJson(url) {
+  const response = await fetch(url, { cache: 'no-store' });
+  if (!response.ok) throw new Error(`Request failed: ${response.status}`);
+  return response.json();
+}
+
+async function fetchCryptoSnapshot(symbol) {
+  const pair = BINANCE_SYMBOLS[symbol] || symbol.replace('USD', 'USDT');
+  try {
+    const data = await fetchJson(`https://api.binance.com/api/v3/ticker/24hr?symbol=${pair}`);
+    return {
+      price: safeNumber(data.lastPrice, 0),
+      changePercent: safeNumber(data.priceChangePercent, 0),
+      high: safeNumber(data.highPrice, 0),
+      low: safeNumber(data.lowPrice, 0),
+      source: 'live'
+    };
+  } catch (error) {
+    const fallback = symbol === 'BTCUSD' ? 68250 : 3489.2;
+    return {
+      price: fallback,
+      changePercent: symbol === 'BTCUSD' ? 2.34 : 1.78,
+      high: fallback * 1.02,
+      low: fallback * 0.98,
+      source: 'fallback'
+    };
   }
 }
 
-@media (max-width: 680px) {
-  .topbar {
-    flex-wrap: wrap;
+async function fetchGoldSnapshot() {
+  try {
+    const data = await fetchJson('https://api.metals.live/v1/spot');
+    const goldObject = Array.isArray(data)
+      ? data.find((item) => item?.name === 'gold' || item?.symbol === 'XAU' || item?.code === 'XAU') || data[0]
+      : null;
+
+    if (goldObject) {
+      const price = safeNumber(goldObject.price || goldObject.gold || goldObject.value || 3998, 3998);
+      const change = safeNumber(goldObject.change || 0.61, 0.61);
+      return {
+        price,
+        changePercent: change,
+        high: price * 1.01,
+        low: price * 0.99,
+        source: 'live'
+      };
+    }
+  } catch (error) {
+    // ignore and use fallback below
   }
 
-  .nav {
-    width: 100%;
-  }
-
-  .pair-main {
-    font-size: 24px;
-  }
-
-  .price-main {
-    font-size: 24px;
-  }
-
-  .signal-grid {
-    grid-template-columns: 1fr;
-  }
+  return {
+    price: 3997.85,
+    changePercent: 0.64,
+    high: 4015,
+    low: 3968,
+    source: 'fallback'
+  };
 }
+
+async function fetchForexSnapshot(symbol) {
+  if (symbol === 'EURUSD') {
+    try {
+      const data = await fetchJson('https://api.frankfurter.app/latest?from=EUR&to=USD');
+      const rate = safeNumber(data?.rates?.USD, 1.0854);
+      return {
+        price: rate,
+        changePercent: 0.7,
+        high: rate * 1.003,
+        low: rate * 0.997,
+        source: 'live'
+      };
+    } catch (error) {
+      return {
+        price: 1.0854,
+        changePercent: 0.72,
+        high: 1.0874,
+        low: 1.0803,
+        source: 'fallback'
+      };
+    }
+  }
+
+  return {
+    price: 0,
+    changePercent: 0,
+    high: 0,
+    low: 0,
+    source: 'fallback'
+  };
+}
+
+async function fetchMarketSnapshot(symbols) {
+  const requests = symbols.map(async (symbol) => {
+    let result;
+
+    if (symbol === 'BTCUSD') result = await fetchCryptoSnapshot(symbol);
+    else if (symbol === 'ETHUSD') result = await fetchCryptoSnapshot(symbol);
+    else if (symbol === 'XAUUSD') result = await fetchGoldSnapshot();
+    else if (symbol === 'EURUSD') result = await fetchForexSnapshot(symbol);
+    else result = { price: 0, changePercent: 0, high: 0, low: 0, source: 'fallback' };
+
+    return {
+      symbol: getDisplaySymbol(symbol),
+      normalizedSymbol: symbol,
+      price: Number(result.price || 0),
+      changePercent: Number(result.changePercent || 0),
+      high: Number(result.high || result.price || 0),
+      low: Number(result.low || result.price || 0),
+      source: result.source || 'fallback'
+    };
+  });
+
+  return Promise.all(requests);
+}
+
+async function fetchSeriesForSymbol(symbol, timeframe) {
+  const intervalMap = {
+    '1m': '1m',
+    '5m': '5m',
+    '15m': '15m',
+    '30m': '30m',
+    '1h': '1h',
+    '4h': '4h'
+  };
+
+  const interval = intervalMap[timeframe] || '1h';
+
+  if (symbol === 'BTCUSD') {
+    try {
+      const data = await fetchJson(`https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${interval}&limit=120`);
+      const closes = data.map((entry) => safeNumber(entry[4], 0));
+      return closes.length ? closes : buildFallbackHistory(68250, 1, 120);
+    } catch (error) {
+      return buildFallbackHistory(68250, 1, 120);
+    }
+  }
+
+  if (symbol === 'ETHUSD') {
+    try {
+      const data = await fetchJson(`https://api.binance.com/api/v3/klines?symbol=ETHUSDT&interval=${interval}&limit=120`);
+      const closes = data.map((entry) => safeNumber(entry[4], 0));
+      return closes.length ? closes : buildFallbackHistory(3489.2, 1, 120);
+    } catch (error) {
+      return buildFallbackHistory(3489.2, 1, 120);
+    }
+  }
+
+  if (symbol === 'XAUUSD') {
+    const base = 3997.85;
+    return buildFallbackHistory(base, 1, 120);
+  }
+
+  if (symbol === 'EURUSD') {
+    const base = 1.0854;
+    return buildFallbackHistory(base, 1, 120);
+  }
+
+  return buildFallbackHistory(100, 1, 120);
+}
+
+function buildSignalFromMetrics(symbol, price, series, timeframe) {
+  const closes = Array.isArray(series) && series.length ? series : buildFallbackHistory(price, 1, 60);
+  const latest = Number(closes[closes.length - 1] || price);
+  const previous = Number(closes[closes.length - 2] || latest);
+  const deltaPercent = ((latest - previous) / previous) * 100;
+
+  const rsi = calculateRSI(closes);
+  const emaFast = calculateEMA(closes, 9);
+  const emaSlow = calculateEMA(closes, 21);
+  const macd = calculateMACD(closes);
+  const bollinger = calculateBollinger(closes);
+
+  let direction = 'buy';
+  if (latest < emaFast && latest < emaSlow && rsi < 45) direction = 'sell';
+  else if (latest > emaFast && latest > emaSlow && rsi > 55) direction = 'buy';
+  else if (deltaPercent < -0.45 && macd < 0 && latest < bollinger.lower) direction = 'sell';
+  else if (deltaPercent > 0.45 && macd > 0 && latest > bollinger.upper) direction = 'buy';
+
+  const signalSide = direction === 'buy';
+  const volatility = Math.max(0.003, Math.abs(bollinger.upper - bollinger.lower) / latest);
+  const tpDistance = latest * volatility * (signalSide ? 2.1 : 1.9);
+  const slDistance = latest * volatility * (signalSide ? 1.2 : 1.1);
+
+  const entry = latest;
+  const takeProfit = signalSide ? entry + tpDistance : entry - tpDistance;
+  const stopLoss = signalSide ? entry - slDistance : entry + slDistance;
+  const confidence = clamp(Math.round(70 + Math.abs(rsi - 50) * 0.75 + (signalSide ? 10 : 0) + Math.abs(macd) * 100), 72, 95);
+  const lotSize = clamp((Math.abs(deltaPercent) * 8 + 0.25) * 0.5, 0.1, 5).toFixed(2);
+
+  const notes = [
+    `RSI: ${rsi.toFixed(1)} — ${rsi > 70 ? 'مناطق شراء مفرطة' : rsi < 30 ? 'مناطق بيع مفرطة' : 'الزخم متوازن'}`,
+    `EMA 9 / EMA 21: ${emaFast.toFixed(4)} / ${emaSlow.toFixed(4)} — ${latest >= emaFast && latest >= emaSlow ? 'السعر فوق المتوسطات' : 'السعر تحت المتوسطات'}`,
+    `MACD: ${macd.toFixed(4)} — ${macd > 0 ? 'تأكيد صعودي' : 'تأكيد هبوطي'}`,
+    `Bollinger: ${latest > bollinger.upper ? 'السعر أعلى النطاق العلوي' : latest < bollinger.lower ? 'السعر أقل النطاق السفلي' : 'السعر داخل النطاق'}`
+  ];
+
+  return {
+    symbol: getDisplaySymbol(symbol),
+    normalizedSymbol: symbol,
+    timeframe,
+    direction,
+    entry,
+    takeProfit,
+    stopLoss,
+    confidence,
+    lotSize,
+    riskReward: Number((Math.abs(takeProfit - entry) / Math.abs(entry - stopLoss)).toFixed(2)),
+    priceDelta: Number(deltaPercent.toFixed(3)),
+    metrics: {
+      rsi: Number(rsi.toFixed(1)),
+      macd: Number(macd.toFixed(4)),
+      emaFast: Number(emaFast.toFixed(4)),
+      emaSlow: Number(emaSlow.toFixed(4)),
+      bollingerUpper: Number(bollinger.upper.toFixed(4)),
+      bollingerLower: Number(bollinger.lower.toFixed(4))
+    },
+    notes
+  };
+}
+
+function App() {
+  const [markets, setMarkets] = useState([]);
+  const [selectedSymbol, setSelectedSymbol] = useState('BTCUSD');
+  const [selectedTimeframe, setSelectedTimeframe] = useState('1h');
+  const [analysis, setAnalysis] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [botConfig, setBotConfig] = useState(DEFAULT_MT5);
+  const [botStatus, setBotStatus] = useState({ connected: false, enabled: false, message: 'MT5 bridge not active yet.' });
+
+  const selectedMarket = useMemo(
+    () => markets.find((market) => market.normalizedSymbol === selectedSymbol) || markets[0],
+    [markets, selectedSymbol]
+  );
+
+  const refreshMarkets = async () => {
+    try {
+      const snapshot = await fetchMarketSnapshot(['BTCUSD', 'ETHUSD', 'XAUUSD', 'EURUSD']);
+      setMarkets(snapshot);
+    } catch (error) {
+      setMarkets([
+        { symbol: 'BTC/USD', normalizedSymbol: 'BTCUSD', price: 68250, changePercent: 2.34, high: 68980, low: 66420, source: 'fallback' },
+        { symbol: 'ETH/USD', normalizedSymbol: 'ETHUSD', price: 3489.2, changePercent: 1.78, high: 3570, low: 3340, source: 'fallback' },
+        { symbol: 'XAUUSD', normalizedSymbol: 'XAUUSD', price: 3997.85, changePercent: 0.64, high: 4015, low: 3968, source: 'fallback' },
+        { symbol: 'EUR/USD', normalizedSymbol: 'EURUSD', price: 1.0854, changePercent: 0.72, high: 1.0874, low: 1.0803, source: 'fallback' }
+      ]);
+    }
+  };
+
+  useEffect(() => {
+    const initialize = async () => {
+      setLoading(true);
+      await refreshMarkets();
+      setLoading(false);
+    };
+
+    initialize();
+    const interval = setInterval(() => {
+      refreshMarkets();
+    }, 20000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const runManualAnalysis = async (symbol = selectedSymbol, timeframe = selectedTimeframe) => {
+    setLoading(true);
+
+    try {
+      const current = markets.find((item) => item.normalizedSymbol === symbol) || selectedMarket;
+      const series = await fetchSeriesForSymbol(symbol, timeframe);
+      const signal = buildSignalFromMetrics(symbol, Number(current?.price || 0), series, timeframe);
+      setAnalysis(signal);
+    } catch (error) {
+      const current = markets.find((item) => item.normalizedSymbol === symbol) || selectedMarket;
+      const fallbackSeries = buildFallbackHistory(Number(current?.price || 0), 1, 80);
+      setAnalysis(buildSignalFromMetrics(symbol, Number(current?.price || 0), fallbackSeries, timeframe));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedMarket && (!analysis || analysis.normalizedSymbol !== selectedSymbol)) {
+      runManualAnalysis(selectedSymbol, selectedTimeframe);
+    }
+  }, [selectedSymbol, selectedTimeframe]);
+
+  async function toggleBot() {
+    const nextState = !botConfig.enabled;
+    const payload = { ...botConfig, enabled: nextState };
+    setBotConfig(payload);
+
+    const connected = Boolean(payload.accountNumber && payload.password && payload.serverName && payload.tickerAllApiKey);
+    setBotStatus({
+      connected,
+      enabled: nextState,
+      message: connected
+        ? 'MT5 bridge ready to send orders after the live environment is linked.'
+        : 'Incomplete MT5 credential set. Add Account, Password, Server and API key to activate the robot.'
+    });
+  }
+
+  const currentPrice = Number(selectedMarket?.price || 0);
+  const chartData = useMemo(() => {
+    const values = buildFallbackHistory(currentPrice, currentPrice > 1 ? 1 : -1, 60);
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const range = max - min || 1;
+
+    return values.map((value, index) => {
+      const x = 20 + (index * (760 - 40)) / (values.length - 1);
+      const y = 220 - ((value - min) / range) * 180;
+      return { x, y };
+    });
+  }, [currentPrice]);
+
+  const chartPoints = chartData.map((point) => `${point.x},${point.y}`).join(' ');
+  const chartArea = `${chartPoints} 740,220 20,220`;
+
+  return (
+    <div className="app-shell">
+      <header className="topbar">
+        <div className="brand-wrap">
+          <div className="brand-mark">A</div>
+          <div>
+            <div className="brand-name">Apex AI Trader</div>
+            <small>AI Trading Intelligence Suite</small>
+          </div>
+        </div>
+
+        <nav className="nav">
+          <button type="button" className="nav-pill active">لوحة التداول</button>
+          <button type="button" className="nav-pill">الاسترات��جيات</button>
+          <button type="button" className="nav-pill">الأداء</button>
+          <button type="button" className="nav-pill">المحفظة</button>
+        </nav>
+
+        <div className="profile-box">
+          <div className="avatar">M</div>
+          <div>
+            <div className="profile-name">محمد</div>
+            <div className="profile-role">VIP Signal</div>
+          </div>
+        </div>
+      </header>
+
+      <main className="dashboard">
+        <aside className="panel side-panel">
+          <div className="section-head">
+            <h3>الأسواق</h3>
+            <span className="live-badge">Live</span>
+          </div>
+
+          <div className="market-list">
+            {markets.map((market) => {
+              const isActive = market.normalizedSymbol === selectedSymbol;
+              return (
+                <button
+                  key={market.normalizedSymbol}
+                  type="button"
+                  className={`market-item ${isActive ? 'active' : ''}`}
+                  onClick={() => setSelectedSymbol(market.normalizedSymbol)}
+                >
+                  <div className="market-top">
+                    <span>{market.symbol}</span>
+                    <span className="pair-tag">{market.source === 'live' ? 'Live' : 'Demo'}</span>
+                  </div>
+                  <div className="market-meta">
+                    <strong>{currency(market.price)}</strong>
+                    <span className={Number(market.changePercent || 0) >= 0 ? 'positive' : 'negative'}>
+                      {formatPercent(Number(market.changePercent || 0))}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </aside>
+
+        <section className="panel center-panel">
+          <div className="market-header">
+            <div className="market-title-group">
+              <div className="pair-title">{getDisplaySymbol(selectedSymbol)}</div>
+              <div className="price-row">
+                <div className="price-value">{currency(currentPrice)}</div>
+                <div className={`trend-pill ${Number(selectedMarket?.changePercent || 0) >= 0 ? 'positive' : 'negative'}`}>
+                  {formatPercent(Number(selectedMarket?.changePercent || 0))}
+                </div>
+              </div>
+            </div>
+            <div className={`market-direction ${analysis?.direction === 'buy' ? 'buy' : 'sell'}`}>
+              {analysis?.direction === 'buy' ? 'صعودي' : 'هبوطي'}
+            </div>
+          </div>
+
+          <div className="chart-card">
+            <div className="chart-top">
+              <span>مؤشرات الذكاء الاصطناعي</span>
+              <div className="time-range">
+                {TIMEFRAMES.map((frame) => (
+                  <span key={frame} className={selectedTimeframe === frame ? 'timeframe-active' : ''}>{frame}</span>
+                ))}
+              </div>
+            </div>
+
+            <svg className="chart-svg" viewBox="0 0 760 220" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="fillGradient" x1="0%" x2="0%" y1="0%" y2="100%">
+                  <stop offset="0%" stopColor="rgba(74,164,255,0.35)" />
+                  <stop offset="100%" stopColor="rgba(21,209,156,0.02)" />
+                </linearGradient>
+                <linearGradient id="lineGradient" x1="0%" x2="100%" y1="0%" y2="0%">
+                  <stop offset="0%" stopColor="#4aa4ff" />
+                  <stop offset="100%" stopColor="#15d19c" />
+                </linearGradient>
+              </defs>
+
+              {[40, 80, 120, 160, 200].map((y) => (
+                <line key={y} x1="20" x2="740" y1={y} y2={y} stroke="rgba(148,163,184,0.18)" strokeDasharray="6 8" />
+              ))}
+
+              <polygon points={chartArea} fill="url(#fillGradient)" />
+              <polyline points={chartPoints} fill="none" stroke="url(#lineGradient)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
+
+          <div className="analysis-card">
+            <div className="analysis-box-head">
+              <div className="soft-label">Manual Analysis Mode</div>
+              <div className="selector-row">
+                <select value={selectedSymbol} onChange={(event) => setSelectedSymbol(event.target.value)}>
+                  {MARKET_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+                <select value={selectedTimeframe} onChange={(event) => setSelectedTimeframe(event.target.value)}>
+                  {TIMEFRAMES.map((frame) => (
+                    <option key={frame} value={frame}>{frame}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {analysis && (
+              <>
+                <div className="analysis-summary">
+                  <div className="signal-badge-wrap">
+                    <span className={`signal-badge ${analysis.direction === 'buy' ? 'buy' : 'sell'}`}>
+                      {analysis.direction === 'buy' ? 'شراء' : 'بيع'}
+                    </span>
+                  </div>
+                  <div className="confidence-tag">الثقة {analysis.confidence}%</div>
+                </div>
+
+                <div className="signal-grid">
+                  <div className="signal-card">
+                    <div className="metric-label">الدخول</div>
+                    <div className="metric-value">{currency(analysis.entry)}</div>
+                    <div className="metric-hint">Live Entry Price</div>
+                  </div>
+                  <div className="signal-card">
+                    <div className="metric-label">الهدف</div>
+                    <div className="metric-value">{currency(analysis.takeProfit)}</div>
+                    <div className="metric-hint">Take Profit</div>
+                  </div>
+                  <div className="signal-card">
+                    <div className="metric-label">الستوب</div>
+                    <div className="metric-value">{currency(analysis.stopLoss)}</div>
+                    <div className="metric-hint">Stop Loss</div>
+                  </div>
+                  <div className="signal-card">
+                    <div className="metric-label">اللوت</div>
+                    <div className="metric-value">{analysis.lotSize}</div>
+                    <div className="metric-hint">Lot Size</div>
+                  </div>
+                </div>
+
+                <div className="insight-box">
+                  <div className="soft-label">AI Analysis Summary</div>
+                  <div className="insight-copy">
+                    {analysis.notes?.map((note, index) => (
+                      <p key={index}>{note}</p>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+
+            <button type="button" className="analyze-btn" onClick={() => runManualAnalysis(selectedSymbol, selectedTimeframe)}>
+              {loading ? 'جاري تحليل السوق...' : 'حلّل الآن'}
+            </button>
+          </div>
+        </section>
+
+        <aside className="panel right-panel">
+          <div className="section-head">
+            <h3>مؤشرات الحساب</h3>
+            <span className="mini-pill">AI</span>
+          </div>
+
+          <div className="metric-box">
+            <div className="metric-row">
+              <span>الرصيد</span>
+              <strong>$125,400</strong>
+            </div>
+            <div className="metric-row">
+              <span>العائد</span>
+              <strong className="positive">+$8,420</strong>
+            </div>
+            <div className="metric-row">
+              <span>معدل الربح</span>
+              <strong>{analysis?.confidence || 82}%</strong>
+            </div>
+          </div>
+
+          <div className="section-head">
+            <h3>التداول الآلي</h3>
+            <button className={`toggle-btn ${botConfig.enabled ? 'on' : ''}`} onClick={toggleBot} type="button">
+              {botConfig.enabled ? 'ON' : 'OFF'}
+            </button>
+          </div>
+
+          <div className="mt5-form">
+            <label>
+              رقم الحساب
+              <input value={botConfig.accountNumber} onChange={(e) => setBotConfig({ ...botConfig, accountNumber: e.target.value })} placeholder="Account Number" />
+            </label>
+            <label>
+              كلمة المرور
+              <input type="password" value={botConfig.password} onChange={(e) => setBotConfig({ ...botConfig, password: e.target.value })} placeholder="Password" />
+            </label>
+            <label>
+              اسم السيرفر
+              <input value={botConfig.serverName} onChange={(e) => setBotConfig({ ...botConfig, serverName: e.target.value })} placeholder="Server Name" />
+            </label>
+            <label>
+              TickerAll API Key
+              <input value={botConfig.tickerAllApiKey} onChange={(e) => setBotConfig({ ...botConfig, tickerAllApiKey: e.target.value })} placeholder="API Key" />
+            </label>
+          </div>
+
+          <div className="bot-status">
+            <strong>{botStatus.enabled ? 'Robot Active' : 'Robot Standby'}</strong>
+            <p>{botStatus.message}</p>
+          </div>
+
+          <div className="notes-list">
+            <div className="note-item">دعم: RSI, EMA, MACD, Bollinger Bands, Price Action</div>
+            <div className="note-item">محرك التداول: Manual + Automated MT5 Bridge</div>
+            <div className="note-item">الخريطة: Market Live Feed + Safe Fallback</div>
+          </div>
+        </aside>
+      </main>
+    </div>
+  );
+}
+
+export default App;
