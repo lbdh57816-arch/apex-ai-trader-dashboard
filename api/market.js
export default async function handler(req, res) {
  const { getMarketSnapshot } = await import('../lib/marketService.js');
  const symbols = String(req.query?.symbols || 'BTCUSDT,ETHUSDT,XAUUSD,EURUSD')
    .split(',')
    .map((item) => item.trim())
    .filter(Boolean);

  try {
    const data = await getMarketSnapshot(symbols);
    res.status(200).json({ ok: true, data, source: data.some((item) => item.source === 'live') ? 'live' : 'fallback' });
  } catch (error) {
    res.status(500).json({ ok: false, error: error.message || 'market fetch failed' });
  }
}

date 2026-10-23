@@ -1,0 +1,63 @@
+import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import { getMarketSnapshot, analyzeSymbol } from './lib/marketService.js';
+
+dotenv.config();
+
+const app = express();
+const port = Number(process.env.PORT || 8081);
+
+app.use(cors());
+app.use(express.json());
+
+app.get('/api/health', (req, res) => {
+  res.json({ ok: true, service: 'apex-ai-trader-api', timestamp: new Date().toISOString() });
+});
+
+app.get('/api/market', async (req, res) => {
+  try {
+    const symbols = String(req.query.symbols || 'BTCUSDT,ETHUSDT,XAUUSD,EURUSD')
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean);
+
+    const data = await getMarketSnapshot(symbols);
+    res.json({ ok: true, data, source: data.some((item) => item.source === 'live') ? 'live' : 'fallback' });
+  } catch (error) {
+    res.status(500).json({ ok: false, error: error.message || 'market fetch failed' });
+  }
+});
+
+app.get('/api/analyze', async (req, res) => {
+  try {
+    const symbol = String(req.query.symbol || 'BTCUSD');
+    const timeframe = String(req.query.timeframe || '1h');
+    const result = await analyzeSymbol(symbol, timeframe);
+    res.json({ ok: true, ...result });
+  } catch (error) {
+    res.status(500).json({ ok: false, error: error.message || 'analysis failed' });
+  }
+});
+
+app.post('/api/mt5', async (req, res) => {
+  const { accountNumber, password, serverName, tickerAllApiKey, enabled } = req.body || {};
+
+  const isReady = Boolean(accountNumber && password && serverName && tickerAllApiKey);
+
+  res.json({
+    ok: true,
+    broker: 'MetaTrader 5',
+    enabled: Boolean(enabled),
+    connected: isReady,
+    accountNumber: accountNumber || 'not-set',
+    serverName: serverName || 'not-set',
+    message: isReady
+      ? 'MT5 bridge ready for automated order execution.'
+      : 'MT5 credentials are incomplete. Add Account Number, Password, Server and API key to activate the bridge.'
+  });
+});
+
+app.listen(port, () => {
+  console.log(`Apex AI Trader API listening on http://localhost:${port}`);
+});

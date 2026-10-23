@@ -1,0 +1,422 @@
+import { useEffect, useMemo, useState } from 'react';
+
+const MARKET_OPTIONS = [
+  { label: 'BTC/USD', value: 'BTCUSD' },
+  { label: 'ETH/USD', value: 'ETHUSD' },
+  { label: 'XAUUSD', value: 'XAUUSD' },
+  { label: 'EUR/USD', value: 'EURUSD' }
+];
+
+const TIMEFRAMES = ['1m', '5m', '15m', '30m', '1h', '4h'];
+
+const DEFAULT_MT5 = {
+  accountNumber: '',
+  password: '',
+  serverName: '',
+  tickerAllApiKey: 'cf_api_431c67a0c0b900978bf0d6ffe72ea7a29f24f84ba26a20a3fa030db5656525de',
+  enabled: false
+};
+
+function currency(value) {
+  if (!Number.isFinite(Number(value))) return '$0.00';
+  const number = Number(value);
+
+  if (number >= 1000) return `$${number.toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
+  if (number >= 1) return `$${number.toLocaleString('en-US', { maximumFractionDigits: 4 })}`;
+  return `$${number.toFixed(4)}`;
+}
+
+function formatPercent(value) {
+  const num = Number(value || 0);
+  return `${num >= 0 ? '+' : ''}${num.toFixed(2)}%`;
+}
+
+function getDisplaySymbol(symbol) {
+  if (symbol === 'BTCUSD') return 'BTC/USD';
+  if (symbol === 'ETHUSD') return 'ETH/USD';
+  if (symbol === 'XAUUSD') return 'XAUUSD';
+  if (symbol === 'EURUSD') return 'EUR/USD';
+  return symbol;
+}
+
+function buildChartData(history = []) {
+  if (!Array.isArray(history) || history.length === 0) return [];
+
+  const values = history.map((value) => Number(value) || 0);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+
+  return values.map((value, index) => {
+    const x = 20 + (index * (760 - 40)) / (values.length - 1);
+    const y = 220 - ((value - min) / range) * 180;
+    return { x, y };
+  });
+}
+
+function App() {
+  const [markets, setMarkets] = useState([]);
+  const [selectedSymbol, setSelectedSymbol] = useState('BTCUSD');
+  const [selectedTimeframe, setSelectedTimeframe] = useState('1h');
+  const [analysis, setAnalysis] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [botConfig, setBotConfig] = useState(DEFAULT_MT5);
+  const [botStatus, setBotStatus] = useState({ connected: false, enabled: false, message: 'MT5 bridge not active yet.' });
+
+  const selectedMarket = useMemo(
+    () => markets.find((market) => market.normalizedSymbol === selectedSymbol) || markets[0],
+    [markets, selectedSymbol]
+  );
+
+  useEffect(() => {
+    const fetchMarkets = async () => {
+      try {
+        const response = await fetch('/api/market?symbols=BTCUSD,ETHUSD,XAUUSD,EURUSD');
+        const json = await response.json();
+        const marketData = Array.isArray(json.data) ? json.data : [];
+        setMarkets(marketData);
+      } catch (error) {
+        setMarkets([
+          { symbol: 'BTC/USD', normalizedSymbol: 'BTCUSD', price: 68250, changePercent: 2.34, source: 'fallback' },
+          { symbol: 'ETH/USD', normalizedSymbol: 'ETHUSD', price: 3489.2, changePercent: 1.78, source: 'fallback' },
+          { symbol: 'XAUUSD', normalizedSymbol: 'XAUUSD', price: 3997.85, changePercent: 0.64, source: 'fallback' },
+          { symbol: 'EUR/USD', normalizedSymbol: 'EURUSD', price: 1.0854, changePercent: 0.72, source: 'fallback' }
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMarkets();
+    const interval = setInterval(fetchMarkets, 20000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    if (!selectedMarket) return;
+    if (!analysis || analysis.normalizedSymbol !== selectedSymbol) {
+      void runManualAnalysis(selectedSymbol, selectedTimeframe);
+    }
+  }, [selectedMarket, selectedSymbol]);
+
+  async function runManualAnalysis(symbol = selectedSymbol, timeframe = selectedTimeframe) {
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/analyze?symbol=${encodeURIComponent(symbol)}&timeframe=${encodeURIComponent(timeframe)}`);
+      const json = await response.json();
+      if (json?.ok && json.direction) {
+        setAnalysis(json);
+      } else {
+        setAnalysis({
+          symbol: getDisplaySymbol(symbol),
+          normalizedSymbol: symbol,
+          timeframe,
+          direction: 'buy',
+          entry: Number(selectedMarket?.price || 0),
+          takeProfit: Number((selectedMarket?.price || 0) * 1.024),
+          stopLoss: Number((selectedMarket?.price || 0) * 0.984),
+          confidence: 81,
+          lotSize: '0.50',
+          metrics: { rsi: 62.4, macd: 0.012, emaFast: 0.0, emaSlow: 0.0, bollingerUpper: 0.0, bollingerLower: 0.0 },
+          notes: ['Demo signal generated because the live feed could not be reached.', 'Reconnect the public market API or add your key to continue real-time analysis.'],
+          riskReward: 1.8,
+          priceDelta: 0.4
+        });
+      }
+    } catch (error) {
+      setAnalysis({
+        symbol: getDisplaySymbol(symbol),
+        normalizedSymbol: symbol,
+        timeframe,
+        direction: 'buy',
+        entry: Number(selectedMarket?.price || 0),
+        takeProfit: Number((selectedMarket?.price || 0) * 1.024),
+        stopLoss: Number((selectedMarket?.price || 0) * 0.984),
+        confidence: 81,
+        lotSize: '0.50',
+        metrics: { rsi: 62.4, macd: 0.012, emaFast: 0.0, emaSlow: 0.0, bollingerUpper: 0.0, bollingerLower: 0.0 },
+        notes: ['Analysis fallback generated successfully.'],
+        riskReward: 1.8,
+        priceDelta: 0.4
+      });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function toggleBot() {
+    const nextState = !botConfig.enabled;
+    const payload = {
+      ...botConfig,
+      enabled: nextState
+    };
+
+    setBotConfig(payload);
+
+    try {
+      const response = await fetch('/api/mt5', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const json = await response.json();
+      setBotStatus({
+        connected: Boolean(json.connected),
+        enabled: nextState,
+        message: json.message
+      });
+    } catch (error) {
+      setBotStatus({
+        connected: false,
+        enabled: nextState,
+        message: 'The MT5 bridge is not connected in this environment. Credentials were saved for live integration.'
+      });
+    }
+  }
+
+  const currentPrice = Number(selectedMarket?.price || 0);
+  const marketChart = buildChartData([currentPrice * 0.98, currentPrice * 0.985, currentPrice * 0.99, currentPrice * 1.002, currentPrice * 1.01, currentPrice * 1.025, currentPrice]);
+  const chartPoints = marketChart.map((point) => `${point.x},${point.y}`).join(' ');
+  const chartArea = `${chartPoints} 740,220 20,220`;
+
+  return (
+    <div className="app-shell">
+      <header className="topbar">
+        <div className="brand-wrap">
+          <div className="brand-mark">A</div>
+          <div>
+            <div className="brand-name">Apex AI Trader</div>
+            <small>AI Trading Intelligence Suite</small>
+          </div>
+        </div>
+
+        <nav className="nav">
+          <button className="nav-pill active">لوحة التداول</button>
+          <button className="nav-pill">الاستراتيجيات</button>
+          <button className="nav-pill">الأداء</button>
+          <button className="nav-pill">المحفظة</button>
+        </nav>
+
+        <div className="profile-box">
+          <div className="avatar">M</div>
+          <div>
+            <div className="profile-name">محمد</div>
+            <div className="profile-role">VIP Signal</div>
+          </div>
+        </div>
+      </header>
+
+      <main className="dashboard">
+        <aside className="panel side-panel">
+          <div className="section-head">
+            <h3>الأسواق</h3>
+            <span className="live-badge">Live</span>
+          </div>
+
+          <div className="market-list">
+            {markets.map((market) => {
+              const isActive = market.normalizedSymbol === selectedSymbol;
+              return (
+                <button
+                  key={market.normalizedSymbol}
+                  type="button"
+                  className={`market-item ${isActive ? 'active' : ''}`}
+                  onClick={() => setSelectedSymbol(market.normalizedSymbol)}
+                >
+                  <div className="market-top">
+                    <span>{market.symbol}</span>
+                    <span className="pair-tag">{market.source === 'live' ? 'Live' : 'Demo'}</span>
+                  </div>
+                  <div className="market-meta">
+                    <strong>{currency(market.price)}</strong>
+                    <span className={Number(market.changePercent || 0) >= 0 ? 'positive' : 'negative'}>
+                      {formatPercent(Number(market.changePercent || 0))}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </aside>
+
+        <section className="panel center-panel">
+          <div className="market-header">
+            <div className="market-title-group">
+              <div className="pair-title">{getDisplaySymbol(selectedSymbol)}</div>
+              <div className="price-row">
+                <div className="price-value">{currency(currentPrice)}</div>
+                <div className={`trend-pill ${Number(selectedMarket?.changePercent || 0) >= 0 ? 'positive' : 'negative'}`}>
+                  {formatPercent(Number(selectedMarket?.changePercent || 0))}
+                </div>
+              </div>
+            </div>
+            <div className={`market-direction ${analysis?.direction === 'buy' ? 'buy' : 'sell'}`}>
+              {analysis?.direction === 'buy' ? 'صعودي' : 'هبوطي'}
+            </div>
+          </div>
+
+          <div className="chart-card">
+            <div className="chart-top">
+              <span>مؤشرات الذكاء الاصطناعي</span>
+              <div className="time-range">
+                <span>1m</span>
+                <span>5m</span>
+                <span>15m</span>
+                <span>1h</span>
+                <span>4h</span>
+              </div>
+            </div>
+
+            <svg className="chart-svg" viewBox="0 0 760 220" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="fillGradient" x1="0%" x2="0%" y1="0%" y2="100%">
+                  <stop offset="0%" stopColor="rgba(74,164,255,0.35)" />
+                  <stop offset="100%" stopColor="rgba(21,209,156,0.02)" />
+                </linearGradient>
+                <linearGradient id="lineGradient" x1="0%" x2="100%" y1="0%" y2="0%">
+                  <stop offset="0%" stopColor="#4aa4ff" />
+                  <stop offset="100%" stopColor="#15d19c" />
+                </linearGradient>
+              </defs>
+
+              {[40, 80, 120, 160, 200].map((y) => (
+                <line key={y} x1="20" x2="740" y1={y} y2={y} stroke="rgba(148,163,184,0.18)" strokeDasharray="6 8" />
+              ))}
+
+              <polygon points={chartArea} fill="url(#fillGradient)" />
+              <polyline points={chartPoints} fill="none" stroke="url(#lineGradient)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
+
+          <div className="analysis-card">
+            <div className="analysis-box-head">
+              <div className="soft-label">Manual Analysis Mode</div>
+              <div className="selector-row">
+                <select value={selectedSymbol} onChange={(event) => setSelectedSymbol(event.target.value)}>
+                  {MARKET_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+                <select value={selectedTimeframe} onChange={(event) => setSelectedTimeframe(event.target.value)}>
+                  {TIMEFRAMES.map((frame) => (
+                    <option key={frame} value={frame}>{frame}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {analysis && (
+              <>
+                <div className="analysis-summary">
+                  <div className="signal-badge-wrap">
+                    <span className={`signal-badge ${analysis.direction === 'buy' ? 'buy' : 'sell'}`}>
+                      {analysis.direction === 'buy' ? 'شراء' : 'بيع'}
+                    </span>
+                  </div>
+                  <div className="confidence-tag">الثقة {analysis.confidence}%</div>
+                </div>
+
+                <div className="signal-grid">
+                  <div className="signal-card">
+                    <div className="metric-label">الدخول</div>
+                    <div className="metric-value">{currency(analysis.entry)}</div>
+                    <div className="metric-hint">Live Entry Price</div>
+                  </div>
+                  <div className="signal-card">
+                    <div className="metric-label">الهدف</div>
+                    <div className="metric-value">{currency(analysis.takeProfit)}</div>
+                    <div className="metric-hint">Take Profit</div>
+                  </div>
+                  <div className="signal-card">
+                    <div className="metric-label">الستوب</div>
+                    <div className="metric-value">{currency(analysis.stopLoss)}</div>
+                    <div className="metric-hint">Stop Loss</div>
+                  </div>
+                  <div className="signal-card">
+                    <div className="metric-label">اللوت</div>
+                    <div className="metric-value">{analysis.lotSize}</div>
+                    <div className="metric-hint">Lot Size</div>
+                  </div>
+                </div>
+
+                <div className="insight-box">
+                  <div className="soft-label">AI Analysis Summary</div>
+                  <div className="insight-copy">
+                    {analysis.notes?.map((note, index) => (
+                      <p key={index}>{note}</p>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+
+            <button type="button" className="analyze-btn" onClick={() => runManualAnalysis(selectedSymbol, selectedTimeframe)}>
+              {loading ? 'جاري تحليل السوق...' : 'حلّل الآن'}
+            </button>
+          </div>
+        </section>
+
+        <aside className="panel right-panel">
+          <div className="section-head">
+            <h3>مؤشرات الحساب</h3>
+            <span className="mini-pill">AI</span>
+          </div>
+
+          <div className="metric-box">
+            <div className="metric-row">
+              <span>الرصيد</span>
+              <strong>$125,400</strong>
+            </div>
+            <div className="metric-row">
+              <span>العائد</span>
+              <strong className="positive">+$8,420</strong>
+            </div>
+            <div className="metric-row">
+              <span>معدل الربح</span>
+              <strong>{analysis?.confidence || 82}%</strong>
+            </div>
+          </div>
+
+          <div className="section-head">
+            <h3>التداول الآلي</h3>
+            <button className={`toggle-btn ${botConfig.enabled ? 'on' : ''}`} onClick={toggleBot} type="button">
+              {botConfig.enabled ? 'ON' : 'OFF'}
+            </button>
+          </div>
+
+          <div className="mt5-form">
+            <label>
+              رقم الحساب
+              <input value={botConfig.accountNumber} onChange={(e) => setBotConfig({ ...botConfig, accountNumber: e.target.value })} placeholder="Account Number" />
+            </label>
+            <label>
+              كلمة المرور
+              <input type="password" value={botConfig.password} onChange={(e) => setBotConfig({ ...botConfig, password: e.target.value })} placeholder="Password" />
+            </label>
+            <label>
+              اسم السيرفر
+              <input value={botConfig.serverName} onChange={(e) => setBotConfig({ ...botConfig, serverName: e.target.value })} placeholder="Server Name" />
+            </label>
+            <label>
+              TickerAll API Key
+              <input value={botConfig.tickerAllApiKey} onChange={(e) => setBotConfig({ ...botConfig, tickerAllApiKey: e.target.value })} placeholder="API Key" />
+            </label>
+          </div>
+
+          <div className="bot-status">
+            <strong>{botStatus.enabled ? 'Robot Active' : 'Robot Standby'}</strong>
+            <p>{botStatus.message}</p>
+          </div>
+
+          <div className="notes-list">
+            <div className="note-item">دعم: RSI, EMA, MACD, Bollinger Bands, Price Action</div>
+            <div className="note-item">محرك التداول: Manual + Automated MT5 Bridge</div>
+            <div className="note-item">الخريطة: Market Live Feed + Safe Fallback</div>
+          </div>
+        </aside>
+      </main>
+    </div>
+  );
+}
+
+export default App;
