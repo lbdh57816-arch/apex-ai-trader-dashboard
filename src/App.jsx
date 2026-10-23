@@ -8,7 +8,7 @@ const MARKET_OPTIONS = [
   { label: 'EUR/USD', value: 'EURUSD' }
 ];
 
-function cleanNumber(value, fallback = 0) {
+function safeNumber(value, fallback = 0) {
   const number = Number(value);
   return Number.isFinite(number) ? number : fallback;
 }
@@ -50,10 +50,10 @@ function buildSyntheticHistory(basePrice, direction = 1, points = 120) {
   let current = Number(basePrice) || 100;
 
   for (let index = 0; index < points; index += 1) {
-    const wave = Math.sin(index / 7) * (current * 0.008);
-    const drift = (index / points) * current * 0.02 * direction;
+    const wave = Math.sin(index / 7) * (current * 0.01);
+    const drift = (index / points) * current * 0.018 * direction;
     const noise = (Math.random() - 0.5) * current * 0.004;
-    current = current + wave * 0.35 + drift * 0.12 + noise;
+    current = current + wave * 0.45 + drift * 0.12 + noise;
     output.push(Number(current.toFixed(4)));
   }
 
@@ -116,10 +116,7 @@ function calculateBollinger(values, period = 20) {
 
 async function fetchJson(url) {
   const response = await fetch(url, { cache: 'no-store' });
-  if (!response.ok) {
-    throw new Error(`Request failed: ${response.status}`);
-  }
-
+  if (!response.ok) throw new Error(`Request failed: ${response.status}`);
   return response.json();
 }
 
@@ -127,20 +124,14 @@ async function fetchBitcoinPrice() {
   try {
     const data = await fetchJson('https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT');
     return {
-      price: cleanNumber(data.lastPrice, 0),
-      changePercent: cleanNumber(data.priceChangePercent, 0),
-      high: cleanNumber(data.highPrice, 0),
-      low: cleanNumber(data.lowPrice, 0),
+      price: safeNumber(data.lastPrice, 0),
+      changePercent: safeNumber(data.priceChangePercent, 0),
+      high: safeNumber(data.highPrice, 0),
+      low: safeNumber(data.lowPrice, 0),
       source: 'live'
     };
   } catch (error) {
-    return {
-      price: 0,
-      changePercent: 0,
-      high: 0,
-      low: 0,
-      source: 'offline'
-    };
+    return { price: 0, changePercent: 0, high: 0, low: 0, source: 'offline' };
   }
 }
 
@@ -148,20 +139,14 @@ async function fetchEthereumPrice() {
   try {
     const data = await fetchJson('https://api.binance.com/api/v3/ticker/24hr?symbol=ETHUSDT');
     return {
-      price: cleanNumber(data.lastPrice, 0),
-      changePercent: cleanNumber(data.priceChangePercent, 0),
-      high: cleanNumber(data.highPrice, 0),
-      low: cleanNumber(data.lowPrice, 0),
+      price: safeNumber(data.lastPrice, 0),
+      changePercent: safeNumber(data.priceChangePercent, 0),
+      high: safeNumber(data.highPrice, 0),
+      low: safeNumber(data.lowPrice, 0),
       source: 'live'
     };
   } catch (error) {
-    return {
-      price: 0,
-      changePercent: 0,
-      high: 0,
-      low: 0,
-      source: 'offline'
-    };
+    return { price: 0, changePercent: 0, high: 0, low: 0, source: 'offline' };
   }
 }
 
@@ -173,33 +158,27 @@ async function fetchGoldPrice() {
       : null;
 
     if (gold) {
-      const price = cleanNumber(gold.price ?? gold.gold ?? gold.value ?? gold.ask ?? 0, 0);
-      const change = cleanNumber(gold.change ?? gold.percentChange ?? 0, 0);
+      const price = safeNumber(gold.price ?? gold.gold ?? gold.value ?? gold.ask ?? 0, 0);
+      const change = safeNumber(gold.change ?? gold.percentChange ?? 0, 0);
       return {
         price,
         changePercent: change,
-        high: cleanNumber(gold.high ?? price * 1.01, price),
-        low: cleanNumber(gold.low ?? price * 0.99, price),
+        high: safeNumber(gold.high ?? price * 1.01, price),
+        low: safeNumber(gold.low ?? price * 0.99, price),
         source: 'live'
       };
     }
   } catch (error) {
-    // fallback is handled below
+    // fallback below
   }
 
-  return {
-    price: 0,
-    changePercent: 0,
-    high: 0,
-    low: 0,
-    source: 'offline'
-  };
+  return { price: 0, changePercent: 0, high: 0, low: 0, source: 'offline' };
 }
 
 async function fetchEuroDollarPrice() {
   try {
     const data = await fetchJson('https://api.frankfurter.app/latest?from=EUR&to=USD');
-    const rate = cleanNumber(data?.rates?.USD, 0);
+    const rate = safeNumber(data?.rates?.USD, 0);
     return {
       price: rate,
       changePercent: 0,
@@ -208,13 +187,7 @@ async function fetchEuroDollarPrice() {
       source: 'live'
     };
   } catch (error) {
-    return {
-      price: 0,
-      changePercent: 0,
-      high: 0,
-      low: 0,
-      source: 'offline'
-    };
+    return { price: 0, changePercent: 0, high: 0, low: 0, source: 'offline' };
   }
 }
 
@@ -222,15 +195,10 @@ async function fetchMarketSnapshot(symbols) {
   const tasks = symbols.map(async (symbol) => {
     let market = { price: 0, changePercent: 0, high: 0, low: 0, source: 'offline' };
 
-    if (symbol === 'BTCUSD') {
-      market = await fetchBitcoinPrice();
-    } else if (symbol === 'ETHUSD') {
-      market = await fetchEthereumPrice();
-    } else if (symbol === 'XAUUSD') {
-      market = await fetchGoldPrice();
-    } else if (symbol === 'EURUSD') {
-      market = await fetchEuroDollarPrice();
-    }
+    if (symbol === 'BTCUSD') market = await fetchBitcoinPrice();
+    else if (symbol === 'ETHUSD') market = await fetchEthereumPrice();
+    else if (symbol === 'XAUUSD') market = await fetchGoldPrice();
+    else if (symbol === 'EURUSD') market = await fetchEuroDollarPrice();
 
     return {
       symbol: getDisplaySymbol(symbol),
@@ -261,7 +229,7 @@ async function fetchSeriesForSymbol(symbol, timeframe, basePrice = 100) {
   if (symbol === 'BTCUSD') {
     try {
       const data = await fetchJson(`https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${interval}&limit=120`);
-      const closes = data.map((entry) => cleanNumber(entry[4], 0)).filter((value) => value > 0);
+      const closes = data.map((entry) => safeNumber(entry[4], 0)).filter((value) => value > 0);
       return closes.length ? closes : buildSyntheticHistory(basePrice || 100, 1, 120);
     } catch (error) {
       return buildSyntheticHistory(basePrice || 100, 1, 120);
@@ -271,20 +239,15 @@ async function fetchSeriesForSymbol(symbol, timeframe, basePrice = 100) {
   if (symbol === 'ETHUSD') {
     try {
       const data = await fetchJson(`https://api.binance.com/api/v3/klines?symbol=ETHUSDT&interval=${interval}&limit=120`);
-      const closes = data.map((entry) => cleanNumber(entry[4], 0)).filter((value) => value > 0);
+      const closes = data.map((entry) => safeNumber(entry[4], 0)).filter((value) => value > 0);
       return closes.length ? closes : buildSyntheticHistory(basePrice || 100, 1, 120);
     } catch (error) {
       return buildSyntheticHistory(basePrice || 100, 1, 120);
     }
   }
 
-  if (symbol === 'XAUUSD') {
-    return buildSyntheticHistory(basePrice || 2500, 1, 120);
-  }
-
-  if (symbol === 'EURUSD') {
-    return buildSyntheticHistory(basePrice || 1.08, 1, 120);
-  }
+  if (symbol === 'XAUUSD') return buildSyntheticHistory(basePrice || 2500, 1, 120);
+  if (symbol === 'EURUSD') return buildSyntheticHistory(basePrice || 1.08, 1, 120);
 
   return buildSyntheticHistory(basePrice || 100, 1, 120);
 }
@@ -309,9 +272,9 @@ function buildSignalFromMetrics(symbol, price, series, timeframe) {
 
   const isBuy = direction === 'buy';
   const volatility = Math.max(0.0015, Math.abs(bollinger.upper - bollinger.lower) / (latest || 1));
-  const risk = (latest || 1) * volatility * (symbol === 'BTCUSD' ? 0.9 : symbol === 'XAUUSD' ? 0.7 : 1.2);
-  const stopLoss = isBuy ? latest - risk * 1.4 : latest + risk * 1.35;
-  const takeProfit1 = isBuy ? latest + risk * 1.8 : latest - risk * 2.1;
+  const risk = (latest || 1) * volatility * (symbol === 'BTCUSD' ? 0.95 : symbol === 'XAUUSD' ? 0.7 : 1.2);
+  const stopLoss = isBuy ? latest - risk * 1.35 : latest + risk * 1.3;
+  const takeProfit1 = isBuy ? latest + risk * 1.85 : latest - risk * 2.1;
   const takeProfit2 = isBuy ? latest + risk * 2.8 : latest - risk * 3.2;
   const takeProfit3 = isBuy ? latest + risk * 4.2 : latest - risk * 4.6;
   const breakEven = isBuy ? latest + risk * 0.35 : latest - risk * 0.35;
@@ -320,11 +283,11 @@ function buildSignalFromMetrics(symbol, price, series, timeframe) {
   const lotSize = clamp((Math.abs(deltaPercent) * 4 + 0.25) * (symbol === 'BTCUSD' ? 0.9 : symbol === 'XAUUSD' ? 0.7 : 1.2), 0.01, 10).toFixed(2);
 
   const notes = [
-    `RSI: ${rsi.toFixed(1)} — ${rsi > 70 ? 'المنطقة تشهد شراء مفرط' : rsi < 30 ? 'المنطقة تشهد بيع مفرط' : 'الزخم متوازن'}`,
-    `EMA 9 / EMA 21: ${emaFast.toFixed(4)} / ${emaSlow.toFixed(4)} — ${latest >= emaFast && latest >= emaSlow ? 'السعر أعلى المتوسطات' : 'السعر تحت المتوسطات'}`,
+    `RSI: ${rsi.toFixed(1)} — ${rsi > 70 ? 'منطقة شراء مفرطة' : rsi < 30 ? 'منطقة بيع مفرطة' : 'الزخم متوازن'}`,
+    `EMA 9 / EMA 21: ${emaFast.toFixed(4)} / ${emaSlow.toFixed(4)} — ${latest >= emaFast && latest >= emaSlow ? 'السعر فوق المتوسطات' : 'السعر تحت المتوسطات'}`,
     `MACD: ${macd.toFixed(4)} — ${macd > 0 ? 'تأكيد صعودي' : 'تأكيد هبوطي'}`,
     `Bollinger Bands: ${latest > bollinger.upper ? 'السعر فوق النطاق العلوي' : latest < bollinger.lower ? 'السعر تحت النطاق السفلي' : 'السعر داخل النطاق'}`,
-    `الفريم ${timeframe} يُظهر ${isBuy ? 'قوة صعودية مستدامة مع إشارات شراء' : 'قوة هبوطية واضحة مع إشارات بيع'} بناءً على السعر المباشر الحالي.`
+    `الفريم ${timeframe} يُظهر ${isBuy ? 'قوة صعودية واضحة' : 'قوة هبوطية واضحة'} مع دعم من السعر المباشر الحالي.`
   ];
 
   return {
@@ -389,10 +352,7 @@ function App() {
     };
 
     init();
-    const interval = setInterval(() => {
-      refreshMarkets();
-    }, 15000);
-
+    const interval = setInterval(() => refreshMarkets(), 15000);
     return () => clearInterval(interval);
   }, []);
 

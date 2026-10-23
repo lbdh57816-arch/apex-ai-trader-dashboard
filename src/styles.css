@@ -1,715 +1,501 @@
-import { useEffect, useMemo, useState } from 'react';
-
-const TIMEFRAMES = ['1m', '5m', '15m', '30m', '1h', '4h'];
-const MARKET_OPTIONS = [
-  { label: 'BTC/USD', value: 'BTCUSD' },
-  { label: 'ETH/USD', value: 'ETHUSD' },
-  { label: 'XAUUSD', value: 'XAUUSD' },
-  { label: 'EUR/USD', value: 'EURUSD' }
-];
-
-const DEFAULT_MT5 = {
-  accountNumber: '',
-  password: '',
-  serverName: '',
-  tickerAllApiKey: 'cf_api_431c67a0c0b900978bf0d6ffe72ea7a29f24f84ba26a20a3fa030db5656525de',
-  enabled: false
-};
-
-function safeNumber(value, fallback = 0) {
-  const num = Number(value);
-  return Number.isFinite(num) ? num : fallback;
+* {
+  box-sizing: border-box;
 }
 
-function clamp(value, min, max) {
-  return Math.min(Math.max(value, min), max);
+:root {
+  color-scheme: dark;
+  --bg: #06121e;
+  --panel: rgba(15, 23, 42, 0.92);
+  --panel-strong: rgba(17, 24, 39, 0.98);
+  --panel-alt: rgba(15, 118, 110, 0.18);
+  --stroke: rgba(148, 163, 184, 0.18);
+  --text: #e2e8f0;
+  --muted: #94a3b8;
+  --buy: #22c55e;
+  --sell: #ef4444;
+  --blue: #4aa4ff;
+  --cyan: #15d19c;
 }
 
-function currency(value) {
-  const num = Number(value || 0);
-  if (!Number.isFinite(num)) return '$0.00';
-  if (num >= 1000) return `$${num.toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
-  if (num >= 1) return `$${num.toLocaleString('en-US', { maximumFractionDigits: 4 })}`;
-  return `$${num.toFixed(4)}`;
+html, body, #root {
+  margin: 0;
+  min-height: 100%;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background:
+    radial-gradient(circle at top, rgba(59, 130, 246, 0.2), transparent 35%),
+    linear-gradient(180deg, #020817 0%, #0b1220 100%);
+  color: var(--text);
 }
 
-function formatPercent(value) {
-  const num = Number(value || 0);
-  return `${num >= 0 ? '+' : ''}${num.toFixed(2)}%`;
+body {
+  min-height: 100vh;
 }
 
-function getDisplaySymbol(symbol) {
-  switch (symbol) {
-    case 'BTCUSD':
-      return 'BTC/USD';
-    case 'ETHUSD':
-      return 'ETH/USD';
-    case 'XAUUSD':
-      return 'XAUUSD';
-    case 'EURUSD':
-      return 'EUR/USD';
-    default:
-      return symbol;
+button, select, input {
+  font: inherit;
+}
+
+.app-shell {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 18px 22px;
+  border: 1px solid var(--stroke);
+  background: rgba(15, 23, 42, 0.7);
+  border-radius: 22px;
+  backdrop-filter: blur(10px);
+}
+
+.brand-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-mark {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, var(--blue), var(--cyan));
+}
+
+.brand-name {
+  font-weight: 700;
+  font-size: 1.2rem;
+}
+
+.brand-wrap small {
+  color: var(--muted);
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.nav-pill {
+  border: 1px solid var(--stroke);
+  background: rgba(15, 23, 42, 0.9);
+  color: var(--text);
+  padding: 10px 16px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.nav-pill.active {
+  background: linear-gradient(135deg, rgba(74, 164, 255, 0.2), rgba(21, 209, 156, 0.18));
+  border-color: rgba(74, 164, 255, 0.45);
+}
+
+.profile-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 16px;
+  border: 1px solid var(--stroke);
+  background: rgba(15, 23, 42, 0.7);
+}
+
+.avatar {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f59e0b, #f97316);
+  font-weight: 700;
+}
+
+.profile-name {
+  font-weight: 600;
+}
+
+.profile-role {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.dashboard {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr) 320px;
+  gap: 22px;
+  margin-top: 22px;
+}
+
+.panel {
+  border: 1px solid var(--stroke);
+  border-radius: 22px;
+  background: rgba(15, 23, 42, 0.8);
+  padding: 18px;
+}
+
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.section-head h3 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.live-badge,
+.mini-pill {
+  background: rgba(34, 197, 94, 0.12);
+  color: var(--buy);
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 0.75rem;
+}
+
+.market-list {
+  display: grid;
+  gap: 12px;
+}
+
+.market-item {
+  width: 100%;
+  border: 1px solid transparent;
+  background: rgba(15, 23, 42, 0.75);
+  color: var(--text);
+  border-radius: 16px;
+  padding: 14px 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.market-item.active {
+  border-color: rgba(74, 164, 255, 0.55);
+  background: linear-gradient(135deg, rgba(74, 164, 255, 0.12), rgba(21, 209, 156, 0.1));
+}
+
+.market-top,
+.market-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+}
+
+.market-top {
+  margin-bottom: 8px;
+}
+
+.market-meta strong {
+  font-size: 1.1rem;
+}
+
+.pair-tag {
+  background: rgba(148, 163, 184, 0.1);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+
+.positive {
+  color: var(--buy);
+}
+
+.negative {
+  color: var(--sell);
+}
+
+.market-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.pair-title {
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.price-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.price-value {
+  font-size: 2.2rem;
+  font-weight: 800;
+}
+
+.trend-pill,
+.market-direction {
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-weight: 700;
+}
+
+.trend-pill.positive,
+.market-direction.buy,
+.signal-badge.buy {
+  background: rgba(34, 197, 94, 0.14);
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  color: var(--buy);
+}
+
+.trend-pill.negative,
+.market-direction.sell,
+.signal-badge.sell {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: var(--sell);
+}
+
+.chart-card {
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid var(--stroke);
+  border-radius: 20px;
+  padding: 16px;
+}
+
+.chart-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+
+.time-range {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.time-range button {
+  background: rgba(15, 23, 42, 0.8);
+  color: var(--text);
+  border: 1px solid var(--stroke);
+  border-radius: 10px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.time-range .timeframe-active {
+  border-color: rgba(74, 164, 255, 0.5);
+  background: rgba(74, 164, 255, 0.12);
+  color: var(--blue);
+}
+
+.chart-svg {
+  width: 100%;
+  height: 240px;
+  display: block;
+  border-radius: 16px;
+}
+
+.analysis-card {
+  margin-top: 20px;
+  border: 1px solid var(--stroke);
+  border-radius: 20px;
+  background: rgba(15, 23, 42, 0.72);
+  padding: 18px;
+}
+
+.analysis-box-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.soft-label {
+  color: var(--muted);
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.selector-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+select {
+  background: rgba(15, 23, 42, 0.9);
+  color: var(--text);
+  border: 1px solid var(--stroke);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.analysis-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.signal-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+.confidence-tag {
+  color: var(--blue);
+  font-weight: 700;
+}
+
+.signal-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.secondary-grid {
+  margin-bottom: 16px;
+}
+
+.signal-card {
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid var(--stroke);
+  border-radius: 16px;
+  padding: 14px 12px;
+}
+
+.metric-label {
+  color: var(--muted);
+  font-size: 0.78rem;
+  margin-bottom: 8px;
+}
+
+.metric-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.metric-hint {
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.insight-box {
+  border: 1px solid var(--stroke);
+  background: rgba(15, 23, 42, 0.75);
+  border-radius: 16px;
+  padding: 14px;
+}
+
+.insight-copy p {
+  margin: 0 0 10px;
+  color: var(--text);
+  line-height: 1.8;
+}
+
+.insight-copy p:last-child {
+  margin-bottom: 0;
+}
+
+.analyze-btn {
+  width: 100%;
+  margin-top: 18px;
+  border: none;
+  border-radius: 14px;
+  padding: 16px 18px;
+  background: linear-gradient(135deg, var(--blue), var(--cyan));
+  color: #fff;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.metric-box {
+  display: grid;
+  gap: 12px;
+  padding: 10px 0 14px;
+}
+
+.metric-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid var(--stroke);
+  padding-bottom: 10px;
+}
+
+.metric-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.notes-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.note-item {
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid var(--stroke);
+  border-radius: 12px;
+  padding: 10px 12px;
+  color: var(--muted);
+}
+
+@media (max-width: 1100px) {
+  .dashboard {
+    grid-template-columns: 1fr;
+  }
+
+  .topbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .nav {
+    justify-content: center;
   }
 }
 
-function buildSyntheticHistory(basePrice, trendBias = 1, points = 120) {
-  const output = [];
-  let current = basePrice * (0.96 + Math.random() * 0.04);
-
-  for (let i = 0; i < points; i += 1) {
-    const wave = Math.sin(i / 6) * (basePrice * 0.008); 
-    const drift = (i / points) * basePrice * 0.02 * trendBias;
-    const noise = (Math.random() - 0.5) * basePrice * 0.004;
-    current = current + wave * 0.25 + drift * 0.12 + noise;
-    output.push(Number(current.toFixed(4)));
+@media (max-width: 700px) {
+  .app-shell {
+    padding: 14px;
   }
 
-  return output;
-}
-
-function calculateEMA(values, period) {
-  if (!Array.isArray(values) || values.length === 0) return 0;
-  const k = 2 / (period + 1);
-  let ema = Number(values[0]);
-  for (let i = 1; i < values.length; i += 1) {
-    ema = Number(values[i]) * k + ema * (1 - k);
-  }
-  return ema;
-}
-
-function calculateRSI(values, period = 14) {
-  if (!Array.isArray(values) || values.length <= period) return 50;
-  let gains = 0;
-  let losses = 0;
-
-  for (let i = 1; i <= period; i += 1) {
-    const delta = Number(values[i]) - Number(values[i - 1]);
-    if (delta >= 0) gains += delta;
-    else losses -= delta;
+  .signal-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  const avgGain = gains / period;
-  const avgLoss = losses / period;
-
-  if (avgLoss === 0) return 100;
-  const rs = avgGain / avgLoss;
-  return 100 - 100 / (1 + rs);
-}
-
-function calculateMACD(values) {
-  if (!Array.isArray(values) || values.length < 26) return 0;
-  const fast = calculateEMA(values, 12);
-  const slow = calculateEMA(values, 26);
-  return fast - slow;
-}
-
-function calculateBollinger(values, period = 20) {
-  const slice = values.slice(-period);
-  if (!slice.length) return { upper: 0, lower: 0, middle: 0 };
-  const middle = slice.reduce((sum, value) => sum + Number(value), 0) / slice.length;
-  const variance = slice.reduce((sum, value) => sum + (Number(value) - middle) ** 2, 0) / slice.length;
-  const std = Math.sqrt(variance);
-  return { upper: middle + std * 2, lower: middle - std * 2, middle };
-}
-
-async function fetchJson(url) {
-  const response = await fetch(url, { cache: 'no-store' });
-  if (!response.ok) throw new Error(`Request failed: ${response.status}`);
-  return response.json();
-}
-
-async function fetchBTCPrice() {
-  try {
-    const data = await fetchJson('https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT');
-    return {
-      price: safeNumber(data.lastPrice, 68250),
-      changePercent: safeNumber(data.priceChangePercent, 2.3),
-      high: safeNumber(data.highPrice, 68250),
-      low: safeNumber(data.lowPrice, 68250),
-      source: 'live'
-    };
-  } catch (error) {
-    return {
-      price: 68250,
-      changePercent: 2.34,
-      high: 68980,
-      low: 66420,
-      source: 'fallback'
-    };
+  .analysis-box-head,
+  .market-header {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
-
-async function fetchETHPrice() {
-  try {
-    const data = await fetchJson('https://api.binance.com/api/v3/ticker/24hr?symbol=ETHUSDT');
-    return {
-      price: safeNumber(data.lastPrice, 3489.2),
-      changePercent: safeNumber(data.priceChangePercent, 1.8),
-      high: safeNumber(data.highPrice, 3490),
-      low: safeNumber(data.lowPrice, 3340),
-      source: 'live'
-    };
-  } catch (error) {
-    return {
-      price: 3489.2,
-      changePercent: 1.78,
-      high: 3570,
-      low: 3340,
-      source: 'fallback'
-    };
-  }
-}
-
-async function fetchGoldPrice() {
-  try {
-    const data = await fetchJson('https://api.metals.live/v1/spot');
-    const gold = Array.isArray(data)
-      ? data.find((item) => item?.name === 'gold' || item?.symbol === 'XAU' || item?.code === 'XAU') || data[0]
-      : null;
-
-    if (gold) {
-      const price = safeNumber(gold.price || gold.gold || gold.value || 3997.85, 3997.85);
-      return {
-        price,
-        changePercent: safeNumber(gold.change || 0.64, 0.64),
-        high: price * 1.01,
-        low: price * 0.99,
-        source: 'live'
-      };
-    }
-  } catch (error) {
-    // fallback below
-  }
-
-  return {
-    price: 3997.85,
-    changePercent: 0.64,
-    high: 4015,
-    low: 3968,
-    source: 'fallback'
-  };
-}
-
-async function fetchEURPrice() {
-  try {
-    const data = await fetchJson('https://api.frankfurter.app/latest?from=EUR&to=USD');
-    const rate = safeNumber(data?.rates?.USD, 1.0854);
-    return {
-      price: rate,
-      changePercent: 0.72,
-      high: rate * 1.003,
-      low: rate * 0.997,
-      source: 'live'
-    };
-  } catch (error) {
-    return {
-      price: 1.0854,
-      changePercent: 0.72,
-      high: 1.0874,
-      low: 1.0803,
-      source: 'fallback'
-    };
-  }
-}
-
-async function fetchMarketSnapshot(symbols) {
-  const tasks = symbols.map(async (symbol) => {
-    let market;
-
-    if (symbol === 'BTCUSD') market = await fetchBTCPrice();
-    else if (symbol === 'ETHUSD') market = await fetchETHPrice();
-    else if (symbol === 'XAUUSD') market = await fetchGoldPrice();
-    else if (symbol === 'EURUSD') market = await fetchEURPrice();
-    else market = { price: 0, changePercent: 0, high: 0, low: 0, source: 'fallback' };
-
-    return {
-      symbol: getDisplaySymbol(symbol),
-      normalizedSymbol: symbol,
-      price: Number(market.price || 0),
-      changePercent: Number(market.changePercent || 0),
-      high: Number(market.high || market.price || 0),
-      low: Number(market.low || market.price || 0),
-      source: market.source || 'fallback'
-    };
-  });
-
-  return Promise.all(tasks);
-}
-
-async function fetchSeriesForSymbol(symbol, timeframe) {
-  const intervalMap = {
-    '1m': '1m',
-    '5m': '5m',
-    '15m': '15m',
-    '30m': '30m',
-    '1h': '1h',
-    '4h': '4h'
-  };
-
-  const interval = intervalMap[timeframe] || '1h';
-
-  if (symbol === 'BTCUSD') {
-    try {
-      const data = await fetchJson(`https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${interval}&limit=120`);
-      const closes = data.map((entry) => safeNumber(entry[4], 0)).filter((value) => value > 0);
-      return closes.length ? closes : buildSyntheticHistory(68250, 1, 120);
-    } catch (error) {
-      return buildSyntheticHistory(68250, 1, 120);
-    }
-  }
-
-  if (symbol === 'ETHUSD') {
-    try {
-      const data = await fetchJson(`https://api.binance.com/api/v3/klines?symbol=ETHUSDT&interval=${interval}&limit=120`);
-      const closes = data.map((entry) => safeNumber(entry[4], 0)).filter((value) => value > 0);
-      return closes.length ? closes : buildSyntheticHistory(3489.2, 1, 120);
-    } catch (error) {
-      return buildSyntheticHistory(3489.2, 1, 120);
-    }
-  }
-
-  if (symbol === 'XAUUSD') {
-    const base = 3997.85;
-    return buildSyntheticHistory(base, 1, 120);
-  }
-
-  if (symbol === 'EURUSD') {
-    const base = 1.0854;
-    return buildSyntheticHistory(base, 1, 120);
-  }
-
-  return buildSyntheticHistory(100, 1, 120);
-}
-
-function buildSignalFromMetrics(symbol, price, series, timeframe) {
-  const closes = Array.isArray(series) && series.length ? series : buildSyntheticHistory(price, 1, 80);
-  const latest = Number(closes[closes.length - 1] || price);
-  const previous = Number(closes[closes.length - 2] || latest);
-  const deltaPercent = ((latest - previous) / previous) * 100;
-
-  const rsi = calculateRSI(closes);
-  const emaFast = calculateEMA(closes, 9);
-  const emaSlow = calculateEMA(closes, 21);
-  const macd = calculateMACD(closes);
-  const bollinger = calculateBollinger(closes);
-
-  let direction = 'buy';
-
-  if (latest < emaFast && latest < emaSlow && rsi < 45) direction = 'sell';
-  else if (latest > emaFast && latest > emaSlow && rsi > 55) direction = 'buy';
-  else if (deltaPercent < -0.45 && macd < 0 && latest < bollinger.lower) direction = 'sell';
-  else if (deltaPercent > 0.45 && macd > 0 && latest > bollinger.upper) direction = 'buy';
-
-  const isBuy = direction === 'buy';
-  const volatility = Math.max(0.003, Math.abs(bollinger.upper - bollinger.lower) / latest);
-  const baseRisk = latest * volatility;
-  const slDistance = isBuy ? baseRisk * 1.25 : baseRisk * 1.2;
-  const tpDistance = isBuy ? baseRisk * 2.8 : baseRisk * 3.4;
-
-  const entry = latest;
-  const takeProfit1 = isBuy ? entry + tpDistance * 0.8 : entry - tpDistance * 0.8;
-  const takeProfit2 = isBuy ? entry + tpDistance * 1.45 : entry - tpDistance * 1.45;
-  const takeProfit3 = isBuy ? entry + tpDistance * 2.2 : entry - tpDistance * 2.2;
-  const stopLoss = isBuy ? entry - slDistance : entry + slDistance;
-  const breakEven = isBuy ? entry + slDistance * 0.38 : entry - slDistance * 0.38;
-  const trailingStop = isBuy ? entry + slDistance * 0.7 : entry - slDistance * 0.7;
-  const confidence = clamp(Math.round(70 + Math.abs(rsi - 50) * 0.7 + (isBuy ? 8 : 0) + Math.abs(macd) * 70), 72, 96);
-  const lotSize = clamp((Math.abs(deltaPercent) * 8 + 0.2) * 0.55, 0.1, 5.0).toFixed(2);
-
-  const notes = [
-    `RSI: ${rsi.toFixed(1)} — ${rsi > 70 ? 'مناطق شراء مفرطة' : rsi < 30 ? 'مناطق بيع مفرطة' : 'الزخم متوازن'}`,
-    `EMA 9 / EMA 21: ${emaFast.toFixed(4)} / ${emaSlow.toFixed(4)} — ${latest >= emaFast && latest >= emaSlow ? 'السعر فوق المتوسطات' : 'السعر تحت المتوسطات'}`,
-    `MACD: ${macd.toFixed(4)} — ${macd > 0 ? 'تأكيد صعودي' : 'تأكيد هبوطي'}`,
-    `Bollinger: ${latest > bollinger.upper ? 'السعر أعلى النطاق العلوي' : latest < bollinger.lower ? 'السعر أقل النطاق السفلي' : 'السعر داخل النطاق'}`,
-    `الفريم الزمني (${timeframe}) يُظهر ${isBuy ? 'قوة صعودية واضحة' : 'قوة هبوطية واضحة'} مع دعم من Price Action.`
-  ];
-
-  return {
-    symbol: getDisplaySymbol(symbol),
-    normalizedSymbol: symbol,
-    timeframe,
-    direction,
-    entry,
-    tp1: takeProfit1,
-    tp2: takeProfit2,
-    tp3: takeProfit3,
-    stopLoss,
-    breakEven,
-    trailingStop,
-    confidence,
-    lotSize,
-    riskReward: Number((Math.abs(takeProfit1 - entry) / Math.abs(entry - stopLoss)).toFixed(2)),
-    priceDelta: Number(deltaPercent.toFixed(3)),
-    metrics: {
-      rsi: Number(rsi.toFixed(1)),
-      macd: Number(macd.toFixed(4)),
-      emaFast: Number(emaFast.toFixed(4)),
-      emaSlow: Number(emaSlow.toFixed(4)),
-      bollingerUpper: Number(bollinger.upper.toFixed(4)),
-      bollingerLower: Number(bollinger.lower.toFixed(4))
-    },
-    notes
-  };
-}
-
-function App() {
-  const [markets, setMarkets] = useState([]);
-  const [selectedSymbol, setSelectedSymbol] = useState('BTCUSD');
-  const [selectedTimeframe, setSelectedTimeframe] = useState('1h');
-  const [analysis, setAnalysis] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [botConfig, setBotConfig] = useState(DEFAULT_MT5);
-  const [botStatus, setBotStatus] = useState({
-    connected: false,
-    enabled: false,
-    message: 'MT5 system removed. This build is pure client-side and Vercel-safe.'
-  });
-
-  const selectedMarket = useMemo(
-    () => markets.find((item) => item.normalizedSymbol === selectedSymbol) || markets[0],
-    [markets, selectedSymbol]
-  );
-
-  const refreshMarkets = async () => {
-    try {
-      const snapshot = await fetchMarketSnapshot(['BTCUSD', 'ETHUSD', 'XAUUSD', 'EURUSD']);
-      setMarkets(snapshot);
-    } catch (error) {
-      setMarkets([
-        { symbol: 'BTC/USD', normalizedSymbol: 'BTCUSD', price: 68250, changePercent: 2.34, high: 68980, low: 66420, source: 'fallback' },
-        { symbol: 'ETH/USD', normalizedSymbol: 'ETHUSD', price: 3489.2, changePercent: 1.78, high: 3570, low: 3340, source: 'fallback' },
-        { symbol: 'XAUUSD', normalizedSymbol: 'XAUUSD', price: 3997.85, changePercent: 0.64, high: 4015, low: 3968, source: 'fallback' },
-        { symbol: 'EUR/USD', normalizedSymbol: 'EURUSD', price: 1.0854, changePercent: 0.72, high: 1.0874, low: 1.0803, source: 'fallback' }
-      ]);
-    }
-  };
-
-  useEffect(() => {
-    const initialize = async () => {
-      setLoading(true);
-      await refreshMarkets();
-      setLoading(false);
-    };
-
-    initialize();
-    const interval = setInterval(() => {
-      refreshMarkets();
-    }, 15000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  const runManualAnalysis = async (symbol = selectedSymbol, timeframe = selectedTimeframe) => {
-    setLoading(true);
-
-    try {
-      const currentMarket = markets.find((item) => item.normalizedSymbol === symbol) || selectedMarket;
-      const series = await fetchSeriesForSymbol(symbol, timeframe);
-      const signal = buildSignalFromMetrics(symbol, Number(currentMarket?.price || 0), series, timeframe);
-      setAnalysis(signal);
-    } catch (error) {
-      const currentMarket = markets.find((item) => item.normalizedSymbol === symbol) || selectedMarket;
-      const syntheticSeries = buildSyntheticHistory(Number(currentMarket?.price || 0), 1, 90);
-      setAnalysis(buildSignalFromMetrics(symbol, Number(currentMarket?.price || 0), syntheticSeries, timeframe));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (selectedMarket && (!analysis || analysis.normalizedSymbol !== selectedSymbol)) {
-      runManualAnalysis(selectedSymbol, selectedTimeframe);
-    }
-  }, [selectedMarket, selectedSymbol, selectedTimeframe]);
-
-  function toggleBot() {
-    const nextState = !botConfig.enabled;
-    const payload = { ...botConfig, enabled: nextState };
-    setBotConfig(payload);
-    setBotStatus({
-      connected: Boolean(payload.accountNumber && payload.password && payload.serverName && payload.tickerAllApiKey),
-      enabled: nextState,
-      message: 'MT5 system has been removed. The project is now a pure React trading signal dashboard for Vercel deployment.'
-    });
-  }
-
-  const currentPrice = Number(selectedMarket?.price || 0);
-  const chartData = useMemo(() => {
-    const values = buildSyntheticHistory(currentPrice, currentPrice > 1 ? 1 : -1, 60);
-    const min = Math.min(...values);
-    const max = Math.max(...values);
-    const range = max - min || 1;
-
-    return values.map((value, index) => {
-      const x = 20 + (index * (760 - 40)) / (values.length - 1);
-      const y = 220 - ((value - min) / range) * 180;
-      return { x, y };
-    });
-  }, [currentPrice]);
-
-  const chartPoints = chartData.map((point) => `${point.x},${point.y}`).join(' ');
-  const chartArea = `${chartPoints} 740,220 20,220`;
-
-  return (
-    <div className="app-shell">
-      <header className="topbar">
-        <div className="brand-wrap">
-          <div className="brand-mark">A</div>
-          <div>
-            <div className="brand-name">Apex AI Trader</div>
-            <small>AI Trading Intelligence Suite</small>
-          </div>
-        </div>
-
-        <nav className="nav">
-          <button type="button" className="nav-pill active">لوحة التداول</button>
-          <button type="button" className="nav-pill">الاستراتيجيات</button>
-          <button type="button" className="nav-pill">الأداء</button>
-          <button type="button" className="nav-pill">المحفظة</button>
-        </nav>
-
-        <div className="profile-box">
-          <div className="avatar">M</div>
-          <div>
-            <div className="profile-name">محمد</div>
-            <div className="profile-role">VIP Signal</div>
-          </div>
-        </div>
-      </header>
-
-      <main className="dashboard">
-        <aside className="panel side-panel">
-          <div className="section-head">
-            <h3>الأسواق</h3>
-            <span className="live-badge">Live</span>
-          </div>
-
-          <div className="market-list">
-            {markets.map((market) => {
-              const isActive = market.normalizedSymbol === selectedSymbol;
-              return (
-                <button
-                  key={market.normalizedSymbol}
-                  type="button"
-                  className={`market-item ${isActive ? 'active' : ''}`}
-                  onClick={() => setSelectedSymbol(market.normalizedSymbol)}
-                >
-                  <div className="market-top">
-                    <span>{market.symbol}</span>
-                    <span className="pair-tag">{market.source === 'live' ? 'Live' : 'Demo'}</span>
-                  </div>
-                  <div className="market-meta">
-                    <strong>{currency(market.price)}</strong>
-                    <span className={Number(market.changePercent || 0) >= 0 ? 'positive' : 'negative'}>
-                      {formatPercent(Number(market.changePercent || 0))}
-                    </span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </aside>
-
-        <section className="panel center-panel">
-          <div className="market-header">
-            <div className="market-title-group">
-              <div className="pair-title">{getDisplaySymbol(selectedSymbol)}</div>
-              <div className="price-row">
-                <div className="price-value">{currency(currentPrice)}</div>
-                <div className={`trend-pill ${Number(selectedMarket?.changePercent || 0) >= 0 ? 'positive' : 'negative'}`}>
-                  {formatPercent(Number(selectedMarket?.changePercent || 0))}
-                </div>
-              </div>
-            </div>
-            <div className={`market-direction ${analysis?.direction === 'buy' ? 'buy' : 'sell'}`}>
-              {analysis?.direction === 'buy' ? 'صعودي' : 'هبوطي'}
-            </div>
-          </div>
-
-          <div className="chart-card">
-            <div className="chart-top">
-              <span>مؤشرات الذكاء الاصطناعي</span>
-              <div className="time-range">
-                {TIMEFRAMES.map((frame) => (
-                  <span key={frame} className={selectedTimeframe === frame ? 'timeframe-active' : ''}>{frame}</span>
-                ))}
-              </div>
-            </div>
-
-            <svg className="chart-svg" viewBox="0 0 760 220" preserveAspectRatio="none">
-              <defs>
-                <linearGradient id="fillGradient" x1="0%" x2="0%" y1="0%" y2="100%">
-                  <stop offset="0%" stopColor="rgba(74,164,255,0.35)" />
-                  <stop offset="100%" stopColor="rgba(21,209,156,0.02)" />
-                </linearGradient>
-                <linearGradient id="lineGradient" x1="0%" x2="100%" y1="0%" y2="0%">
-                  <stop offset="0%" stopColor="#4aa4ff" />
-                  <stop offset="100%" stopColor="#15d19c" />
-                </linearGradient>
-              </defs>
-
-              {[40, 80, 120, 160, 200].map((y) => (
-                <line key={y} x1="20" x2="740" y1={y} y2={y} stroke="rgba(148,163,184,0.18)" strokeDasharray="6 8" />
-              ))}
-
-              <polygon points={chartArea} fill="url(#fillGradient)" />
-              <polyline points={chartPoints} fill="none" stroke="url(#lineGradient)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </div>
-
-          <div className="analysis-card">
-            <div className="analysis-box-head">
-              <div className="soft-label">Manual Analysis Mode</div>
-              <div className="selector-row">
-                <select value={selectedSymbol} onChange={(event) => setSelectedSymbol(event.target.value)}>
-                  {MARKET_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
-                <select value={selectedTimeframe} onChange={(event) => setSelectedTimeframe(event.target.value)}>
-                  {TIMEFRAMES.map((frame) => (
-                    <option key={frame} value={frame}>{frame}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {analysis && (
-              <>
-                <div className="analysis-summary">
-                  <div className="signal-badge-wrap">
-                    <span className={`signal-badge ${analysis.direction === 'buy' ? 'buy' : 'sell'}`}>
-                      {analysis.direction === 'buy' ? 'شراء' : 'بيع'}
-                    </span>
-                  </div>
-                  <div className="confidence-tag">الثقة {analysis.confidence}%</div>
-                </div>
-
-                <div className="signal-grid">
-                  <div className="signal-card">
-                    <div className="metric-label">الدخول</div>
-                    <div className="metric-value">{currency(analysis.entry)}</div>
-                    <div className="metric-hint">Live Entry Price</div>
-                  </div>
-                  <div className="signal-card">
-                    <div className="metric-label">TP1</div>
-                    <div className="metric-value">{currency(analysis.tp1)}</div>
-                    <div className="metric-hint">Target 1</div>
-                  </div>
-                  <div className="signal-card">
-                    <div className="metric-label">TP2</div>
-                    <div className="metric-value">{currency(analysis.tp2)}</div>
-                    <div className="metric-hint">Target 2</div>
-                  </div>
-                  <div className="signal-card">
-                    <div className="metric-label">TP3</div>
-                    <div className="metric-value">{currency(analysis.tp3)}</div>
-                    <div className="metric-hint">Target 3</div>
-                  </div>
-                </div>
-
-                <div className="signal-grid secondary-grid">
-                  <div className="signal-card">
-                    <div className="metric-label">ستوب</div>
-                    <div className="metric-value">{currency(analysis.stopLoss)}</div>
-                    <div className="metric-hint">Stop Loss</div>
-                  </div>
-                  <div className="signal-card">
-                    <div className="metric-label">Break-even</div>
-                    <div className="metric-value">{currency(analysis.breakEven)}</div>
-                    <div className="metric-hint">حماية الأرباح</div>
-                  </div>
-                  <div className="signal-card">
-                    <div className="metric-label">Trailing</div>
-                    <div className="metric-value">{currency(analysis.trailingStop)}</div>
-                    <div className="metric-hint">Trailing Stop</div>
-                  </div>
-                  <div className="signal-card">
-                    <div className="metric-label">اللوت</div>
-                    <div className="metric-value">{analysis.lotSize}</div>
-                    <div className="metric-hint">Lot Size</div>
-                  </div>
-                </div>
-
-                <div className="insight-box">
-                  <div className="soft-label">AI Analysis Summary</div>
-                  <div className="insight-copy">
-                    {analysis.notes?.map((note, index) => (
-                      <p key={index}>{note}</p>
-                    ))}
-                  </div>
-                </div>
-              </>
-            )}
-
-            <button type="button" className="analyze-btn" onClick={() => runManualAnalysis(selectedSymbol, selectedTimeframe)}>
-              {loading ? 'جاري تحليل السوق...' : 'حلّل الآن'}
-            </button>
-          </div>
-        </section>
-
-        <aside className="panel right-panel">
-          <div className="section-head">
-            <h3>مؤشرات الحساب</h3>
-            <span className="mini-pill">AI</span>
-          </div>
-
-          <div className="metric-box">
-            <div className="metric-row">
-              <span>الرصيد</span>
-              <strong>$125,400</strong>
-            </div>
-            <div className="metric-row">
-              <span>العائد</span>
-              <strong className="positive">+$8,420</strong>
-            </div>
-            <div className="metric-row">
-              <span>معدل الربح</span>
-              <strong>{analysis?.confidence || 82}%</strong>
-            </div>
-          </div>
-
-          <div className="section-head">
-            <h3>التداول الآلي</h3>
-            <button className={`toggle-btn ${botConfig.enabled ? 'on' : ''}`} onClick={toggleBot} type="button">
-              {botConfig.enabled ? 'ON' : 'OFF'}
-            </button>
-          </div>
-
-          <div className="mt5-form">
-            <label>
-              رقم الحس��ب
-              <input value={botConfig.accountNumber} onChange={(e) => setBotConfig({ ...botConfig, accountNumber: e.target.value })} placeholder="Account Number" />
-            </label>
-            <label>
-              كلمة المرور
-              <input type="password" value={botConfig.password} onChange={(e) => setBotConfig({ ...botConfig, password: e.target.value })} placeholder="Password" />
-            </label>
-            <label>
-              اسم السيرفر
-              <input value={botConfig.serverName} onChange={(e) => setBotConfig({ ...botConfig, serverName: e.target.value })} placeholder="Server Name" />
-            </label>
-            <label>
-              TickerAll API Key
-              <input value={botConfig.tickerAllApiKey} onChange={(e) => setBotConfig({ ...botConfig, tickerAllApiKey: e.target.value })} placeholder="API Key" />
-            </label>
-          </div>
-
-          <div className="bot-status">
-            <strong>{botStatus.enabled ? 'Robot Active' : 'Robot Standby'}</strong>
-            <p>{botStatus.message}</p>
-          </div>
-
-          <div className="notes-list">
-            <div className="note-item">دعم: RSI, EMA, MACD, Bollinger Bands, Price Action</div>
-            <div className="note-item">محرك التداول: Manual + Signal Dashboard</div>
-            <div className="note-item">الخريطة: Live Market Feed + Safe Browser Fallback</div>
-          </div>
-        </aside>
-      </main>
-    </div>
-  );
-}
-
-export default App;
