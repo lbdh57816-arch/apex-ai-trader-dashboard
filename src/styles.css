@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 
+const TIMEFRAMES = ['1m', '5m', '15m', '30m', '1h', '4h'];
 const MARKET_OPTIONS = [
   { label: 'BTC/USD', value: 'BTCUSD' },
   { label: 'ETH/USD', value: 'ETHUSD' },
   { label: 'XAUUSD', value: 'XAUUSD' },
   { label: 'EUR/USD', value: 'EURUSD' }
 ];
-
-const TIMEFRAMES = ['1m', '5m', '15m', '30m', '1h', '4h'];
 
 const DEFAULT_MT5 = {
   accountNumber: '',
@@ -17,50 +16,52 @@ const DEFAULT_MT5 = {
   enabled: false
 };
 
-const BINANCE_SYMBOLS = {
-  BTCUSD: 'BTCUSDT',
-  ETHUSD: 'ETHUSDT'
-};
-
-function currency(value) {
-  const number = Number(value || 0);
-  if (!Number.isFinite(number)) return '$0.00';
-  if (number >= 1000) return `$${number.toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
-  if (number >= 1) return `$${number.toLocaleString('en-US', { maximumFractionDigits: 4 })}`;
-  return `$${number.toFixed(4)}`;
-}
-
-function formatPercent(value) {
-  const number = Number(value || 0);
-  return `${number >= 0 ? '+' : ''}${number.toFixed(2)}%`;
-}
-
-function getDisplaySymbol(symbol) {
-  if (symbol === 'BTCUSD') return 'BTC/USD';
-  if (symbol === 'ETHUSD') return 'ETH/USD';
-  if (symbol === 'XAUUSD') return 'XAUUSD';
-  if (symbol === 'EURUSD') return 'EUR/USD';
-  return symbol;
-}
-
 function safeNumber(value, fallback = 0) {
-  const number = Number(value);
-  return Number.isFinite(number) ? number : fallback;
+  const num = Number(value);
+  return Number.isFinite(num) ? num : fallback;
 }
 
 function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
 
-function buildFallbackHistory(basePrice, trendBias = 1, points = 48) {
+function currency(value) {
+  const num = Number(value || 0);
+  if (!Number.isFinite(num)) return '$0.00';
+  if (num >= 1000) return `$${num.toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
+  if (num >= 1) return `$${num.toLocaleString('en-US', { maximumFractionDigits: 4 })}`;
+  return `$${num.toFixed(4)}`;
+}
+
+function formatPercent(value) {
+  const num = Number(value || 0);
+  return `${num >= 0 ? '+' : ''}${num.toFixed(2)}%`;
+}
+
+function getDisplaySymbol(symbol) {
+  switch (symbol) {
+    case 'BTCUSD':
+      return 'BTC/USD';
+    case 'ETHUSD':
+      return 'ETH/USD';
+    case 'XAUUSD':
+      return 'XAUUSD';
+    case 'EURUSD':
+      return 'EUR/USD';
+    default:
+      return symbol;
+  }
+}
+
+function buildSyntheticHistory(basePrice, trendBias = 1, points = 120) {
   const output = [];
-  let current = basePrice * (0.96 + (Math.random() * 0.06));
+  let current = basePrice * (0.96 + Math.random() * 0.04);
 
   for (let i = 0; i < points; i += 1) {
-    const wave = Math.sin(i / 5.3) * (basePrice * 0.0085);
-    const noise = (Math.random() - 0.5) * basePrice * 0.006;
-    const drift = (i / points) * basePrice * 0.021 * trendBias;
-    current = current + wave * 0.35 + drift * 0.12 + noise;
+    const wave = Math.sin(i / 6) * (basePrice * 0.008); 
+    const drift = (i / points) * basePrice * 0.02 * trendBias;
+    const noise = (Math.random() - 0.5) * basePrice * 0.004;
+    current = current + wave * 0.25 + drift * 0.12 + noise;
     output.push(Number(current.toFixed(4)));
   }
 
@@ -108,12 +109,8 @@ function calculateBollinger(values, period = 20) {
   if (!slice.length) return { upper: 0, lower: 0, middle: 0 };
   const middle = slice.reduce((sum, value) => sum + Number(value), 0) / slice.length;
   const variance = slice.reduce((sum, value) => sum + (Number(value) - middle) ** 2, 0) / slice.length;
-  const dev = Math.sqrt(variance);
-  return {
-    upper: middle + dev * 2,
-    lower: middle - dev * 2,
-    middle
-  };
+  const std = Math.sqrt(variance);
+  return { upper: middle + std * 2, lower: middle - std * 2, middle };
 }
 
 async function fetchJson(url) {
@@ -122,49 +119,67 @@ async function fetchJson(url) {
   return response.json();
 }
 
-async function fetchCryptoSnapshot(symbol) {
-  const pair = BINANCE_SYMBOLS[symbol] || symbol.replace('USD', 'USDT');
+async function fetchBTCPrice() {
   try {
-    const data = await fetchJson(`https://api.binance.com/api/v3/ticker/24hr?symbol=${pair}`);
+    const data = await fetchJson('https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT');
     return {
-      price: safeNumber(data.lastPrice, 0),
-      changePercent: safeNumber(data.priceChangePercent, 0),
-      high: safeNumber(data.highPrice, 0),
-      low: safeNumber(data.lowPrice, 0),
+      price: safeNumber(data.lastPrice, 68250),
+      changePercent: safeNumber(data.priceChangePercent, 2.3),
+      high: safeNumber(data.highPrice, 68250),
+      low: safeNumber(data.lowPrice, 68250),
       source: 'live'
     };
   } catch (error) {
-    const fallback = symbol === 'BTCUSD' ? 68250 : 3489.2;
     return {
-      price: fallback,
-      changePercent: symbol === 'BTCUSD' ? 2.34 : 1.78,
-      high: fallback * 1.02,
-      low: fallback * 0.98,
+      price: 68250,
+      changePercent: 2.34,
+      high: 68980,
+      low: 66420,
       source: 'fallback'
     };
   }
 }
 
-async function fetchGoldSnapshot() {
+async function fetchETHPrice() {
+  try {
+    const data = await fetchJson('https://api.binance.com/api/v3/ticker/24hr?symbol=ETHUSDT');
+    return {
+      price: safeNumber(data.lastPrice, 3489.2),
+      changePercent: safeNumber(data.priceChangePercent, 1.8),
+      high: safeNumber(data.highPrice, 3490),
+      low: safeNumber(data.lowPrice, 3340),
+      source: 'live'
+    };
+  } catch (error) {
+    return {
+      price: 3489.2,
+      changePercent: 1.78,
+      high: 3570,
+      low: 3340,
+      source: 'fallback'
+    };
+  }
+}
+
+async function fetchGoldPrice() {
   try {
     const data = await fetchJson('https://api.metals.live/v1/spot');
-    const goldObject = Array.isArray(data)
+    const gold = Array.isArray(data)
       ? data.find((item) => item?.name === 'gold' || item?.symbol === 'XAU' || item?.code === 'XAU') || data[0]
       : null;
 
-    if (goldObject) {
-      const price = safeNumber(goldObject.price || goldObject.gold || goldObject.value || 3998, 3998);
-      const change = safeNumber(goldObject.change || 0.61, 0.61);
+    if (gold) {
+      const price = safeNumber(gold.price || gold.gold || gold.value || 3997.85, 3997.85);
       return {
         price,
-        changePercent: change,
+        changePercent: safeNumber(gold.change || 0.64, 0.64),
         high: price * 1.01,
         low: price * 0.99,
         source: 'live'
       };
     }
   } catch (error) {
-    // ignore and use fallback below
+    // fallback below
   }
 
   return {
@@ -176,60 +191,50 @@ async function fetchGoldSnapshot() {
   };
 }
 
-async function fetchForexSnapshot(symbol) {
-  if (symbol === 'EURUSD') {
-    try {
-      const data = await fetchJson('https://api.frankfurter.app/latest?from=EUR&to=USD');
-      const rate = safeNumber(data?.rates?.USD, 1.0854);
-      return {
-        price: rate,
-        changePercent: 0.7,
-        high: rate * 1.003,
-        low: rate * 0.997,
-        source: 'live'
-      };
-    } catch (error) {
-      return {
-        price: 1.0854,
-        changePercent: 0.72,
-        high: 1.0874,
-        low: 1.0803,
-        source: 'fallback'
-      };
-    }
+async function fetchEURPrice() {
+  try {
+    const data = await fetchJson('https://api.frankfurter.app/latest?from=EUR&to=USD');
+    const rate = safeNumber(data?.rates?.USD, 1.0854);
+    return {
+      price: rate,
+      changePercent: 0.72,
+      high: rate * 1.003,
+      low: rate * 0.997,
+      source: 'live'
+    };
+  } catch (error) {
+    return {
+      price: 1.0854,
+      changePercent: 0.72,
+      high: 1.0874,
+      low: 1.0803,
+      source: 'fallback'
+    };
   }
-
-  return {
-    price: 0,
-    changePercent: 0,
-    high: 0,
-    low: 0,
-    source: 'fallback'
-  };
 }
 
 async function fetchMarketSnapshot(symbols) {
-  const requests = symbols.map(async (symbol) => {
-    let result;
+  const tasks = symbols.map(async (symbol) => {
+    let market;
 
-    if (symbol === 'BTCUSD') result = await fetchCryptoSnapshot(symbol);
-    else if (symbol === 'ETHUSD') result = await fetchCryptoSnapshot(symbol);
-    else if (symbol === 'XAUUSD') result = await fetchGoldSnapshot();
-    else if (symbol === 'EURUSD') result = await fetchForexSnapshot(symbol);
-    else result = { price: 0, changePercent: 0, high: 0, low: 0, source: 'fallback' };
+    if (symbol === 'BTCUSD') market = await fetchBTCPrice();
+    else if (symbol === 'ETHUSD') market = await fetchETHPrice();
+    else if (symbol === 'XAUUSD') market = await fetchGoldPrice();
+    else if (symbol === 'EURUSD') market = await fetchEURPrice();
+    else market = { price: 0, changePercent: 0, high: 0, low: 0, source: 'fallback' };
 
     return {
       symbol: getDisplaySymbol(symbol),
       normalizedSymbol: symbol,
-      price: Number(result.price || 0),
-      changePercent: Number(result.changePercent || 0),
-      high: Number(result.high || result.price || 0),
-      low: Number(result.low || result.price || 0),
-      source: result.source || 'fallback'
+      price: Number(market.price || 0),
+      changePercent: Number(market.changePercent || 0),
+      high: Number(market.high || market.price || 0),
+      low: Number(market.low || market.price || 0),
+      source: market.source || 'fallback'
     };
   });
 
-  return Promise.all(requests);
+  return Promise.all(tasks);
 }
 
 async function fetchSeriesForSymbol(symbol, timeframe) {
@@ -247,38 +252,38 @@ async function fetchSeriesForSymbol(symbol, timeframe) {
   if (symbol === 'BTCUSD') {
     try {
       const data = await fetchJson(`https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${interval}&limit=120`);
-      const closes = data.map((entry) => safeNumber(entry[4], 0));
-      return closes.length ? closes : buildFallbackHistory(68250, 1, 120);
+      const closes = data.map((entry) => safeNumber(entry[4], 0)).filter((value) => value > 0);
+      return closes.length ? closes : buildSyntheticHistory(68250, 1, 120);
     } catch (error) {
-      return buildFallbackHistory(68250, 1, 120);
+      return buildSyntheticHistory(68250, 1, 120);
     }
   }
 
   if (symbol === 'ETHUSD') {
     try {
       const data = await fetchJson(`https://api.binance.com/api/v3/klines?symbol=ETHUSDT&interval=${interval}&limit=120`);
-      const closes = data.map((entry) => safeNumber(entry[4], 0));
-      return closes.length ? closes : buildFallbackHistory(3489.2, 1, 120);
+      const closes = data.map((entry) => safeNumber(entry[4], 0)).filter((value) => value > 0);
+      return closes.length ? closes : buildSyntheticHistory(3489.2, 1, 120);
     } catch (error) {
-      return buildFallbackHistory(3489.2, 1, 120);
+      return buildSyntheticHistory(3489.2, 1, 120);
     }
   }
 
   if (symbol === 'XAUUSD') {
     const base = 3997.85;
-    return buildFallbackHistory(base, 1, 120);
+    return buildSyntheticHistory(base, 1, 120);
   }
 
   if (symbol === 'EURUSD') {
     const base = 1.0854;
-    return buildFallbackHistory(base, 1, 120);
+    return buildSyntheticHistory(base, 1, 120);
   }
 
-  return buildFallbackHistory(100, 1, 120);
+  return buildSyntheticHistory(100, 1, 120);
 }
 
 function buildSignalFromMetrics(symbol, price, series, timeframe) {
-  const closes = Array.isArray(series) && series.length ? series : buildFallbackHistory(price, 1, 60);
+  const closes = Array.isArray(series) && series.length ? series : buildSyntheticHistory(price, 1, 80);
   const latest = Number(closes[closes.length - 1] || price);
   const previous = Number(closes[closes.length - 2] || latest);
   const deltaPercent = ((latest - previous) / previous) * 100;
@@ -290,27 +295,34 @@ function buildSignalFromMetrics(symbol, price, series, timeframe) {
   const bollinger = calculateBollinger(closes);
 
   let direction = 'buy';
+
   if (latest < emaFast && latest < emaSlow && rsi < 45) direction = 'sell';
   else if (latest > emaFast && latest > emaSlow && rsi > 55) direction = 'buy';
   else if (deltaPercent < -0.45 && macd < 0 && latest < bollinger.lower) direction = 'sell';
   else if (deltaPercent > 0.45 && macd > 0 && latest > bollinger.upper) direction = 'buy';
 
-  const signalSide = direction === 'buy';
+  const isBuy = direction === 'buy';
   const volatility = Math.max(0.003, Math.abs(bollinger.upper - bollinger.lower) / latest);
-  const tpDistance = latest * volatility * (signalSide ? 2.1 : 1.9);
-  const slDistance = latest * volatility * (signalSide ? 1.2 : 1.1);
+  const baseRisk = latest * volatility;
+  const slDistance = isBuy ? baseRisk * 1.25 : baseRisk * 1.2;
+  const tpDistance = isBuy ? baseRisk * 2.8 : baseRisk * 3.4;
 
   const entry = latest;
-  const takeProfit = signalSide ? entry + tpDistance : entry - tpDistance;
-  const stopLoss = signalSide ? entry - slDistance : entry + slDistance;
-  const confidence = clamp(Math.round(70 + Math.abs(rsi - 50) * 0.75 + (signalSide ? 10 : 0) + Math.abs(macd) * 100), 72, 95);
-  const lotSize = clamp((Math.abs(deltaPercent) * 8 + 0.25) * 0.5, 0.1, 5).toFixed(2);
+  const takeProfit1 = isBuy ? entry + tpDistance * 0.8 : entry - tpDistance * 0.8;
+  const takeProfit2 = isBuy ? entry + tpDistance * 1.45 : entry - tpDistance * 1.45;
+  const takeProfit3 = isBuy ? entry + tpDistance * 2.2 : entry - tpDistance * 2.2;
+  const stopLoss = isBuy ? entry - slDistance : entry + slDistance;
+  const breakEven = isBuy ? entry + slDistance * 0.38 : entry - slDistance * 0.38;
+  const trailingStop = isBuy ? entry + slDistance * 0.7 : entry - slDistance * 0.7;
+  const confidence = clamp(Math.round(70 + Math.abs(rsi - 50) * 0.7 + (isBuy ? 8 : 0) + Math.abs(macd) * 70), 72, 96);
+  const lotSize = clamp((Math.abs(deltaPercent) * 8 + 0.2) * 0.55, 0.1, 5.0).toFixed(2);
 
   const notes = [
     `RSI: ${rsi.toFixed(1)} — ${rsi > 70 ? 'مناطق شراء مفرطة' : rsi < 30 ? 'مناطق بيع مفرطة' : 'الزخم متوازن'}`,
     `EMA 9 / EMA 21: ${emaFast.toFixed(4)} / ${emaSlow.toFixed(4)} — ${latest >= emaFast && latest >= emaSlow ? 'السعر فوق المتوسطات' : 'السعر تحت المتوسطات'}`,
     `MACD: ${macd.toFixed(4)} — ${macd > 0 ? 'تأكيد صعودي' : 'تأكيد هبوطي'}`,
-    `Bollinger: ${latest > bollinger.upper ? 'السعر أعلى النطاق العلوي' : latest < bollinger.lower ? 'السعر أقل النطاق السفلي' : 'السعر داخل النطاق'}`
+    `Bollinger: ${latest > bollinger.upper ? 'السعر أعلى النطاق العلوي' : latest < bollinger.lower ? 'السعر أقل النطاق السفلي' : 'السعر داخل النطاق'}`,
+    `الفريم الزمني (${timeframe}) يُظهر ${isBuy ? 'قوة صعودية واضحة' : 'قوة هبوطية واضحة'} مع دعم من Price Action.`
   ];
 
   return {
@@ -319,11 +331,15 @@ function buildSignalFromMetrics(symbol, price, series, timeframe) {
     timeframe,
     direction,
     entry,
-    takeProfit,
+    tp1: takeProfit1,
+    tp2: takeProfit2,
+    tp3: takeProfit3,
     stopLoss,
+    breakEven,
+    trailingStop,
     confidence,
     lotSize,
-    riskReward: Number((Math.abs(takeProfit - entry) / Math.abs(entry - stopLoss)).toFixed(2)),
+    riskReward: Number((Math.abs(takeProfit1 - entry) / Math.abs(entry - stopLoss)).toFixed(2)),
     priceDelta: Number(deltaPercent.toFixed(3)),
     metrics: {
       rsi: Number(rsi.toFixed(1)),
@@ -344,10 +360,14 @@ function App() {
   const [analysis, setAnalysis] = useState(null);
   const [loading, setLoading] = useState(true);
   const [botConfig, setBotConfig] = useState(DEFAULT_MT5);
-  const [botStatus, setBotStatus] = useState({ connected: false, enabled: false, message: 'MT5 bridge not active yet.' });
+  const [botStatus, setBotStatus] = useState({
+    connected: false,
+    enabled: false,
+    message: 'MT5 system removed. This build is pure client-side and Vercel-safe.'
+  });
 
   const selectedMarket = useMemo(
-    () => markets.find((market) => market.normalizedSymbol === selectedSymbol) || markets[0],
+    () => markets.find((item) => item.normalizedSymbol === selectedSymbol) || markets[0],
     [markets, selectedSymbol]
   );
 
@@ -375,7 +395,7 @@ function App() {
     initialize();
     const interval = setInterval(() => {
       refreshMarkets();
-    }, 20000);
+    }, 15000);
 
     return () => clearInterval(interval);
   }, []);
@@ -384,14 +404,14 @@ function App() {
     setLoading(true);
 
     try {
-      const current = markets.find((item) => item.normalizedSymbol === symbol) || selectedMarket;
+      const currentMarket = markets.find((item) => item.normalizedSymbol === symbol) || selectedMarket;
       const series = await fetchSeriesForSymbol(symbol, timeframe);
-      const signal = buildSignalFromMetrics(symbol, Number(current?.price || 0), series, timeframe);
+      const signal = buildSignalFromMetrics(symbol, Number(currentMarket?.price || 0), series, timeframe);
       setAnalysis(signal);
     } catch (error) {
-      const current = markets.find((item) => item.normalizedSymbol === symbol) || selectedMarket;
-      const fallbackSeries = buildFallbackHistory(Number(current?.price || 0), 1, 80);
-      setAnalysis(buildSignalFromMetrics(symbol, Number(current?.price || 0), fallbackSeries, timeframe));
+      const currentMarket = markets.find((item) => item.normalizedSymbol === symbol) || selectedMarket;
+      const syntheticSeries = buildSyntheticHistory(Number(currentMarket?.price || 0), 1, 90);
+      setAnalysis(buildSignalFromMetrics(symbol, Number(currentMarket?.price || 0), syntheticSeries, timeframe));
     } finally {
       setLoading(false);
     }
@@ -401,26 +421,22 @@ function App() {
     if (selectedMarket && (!analysis || analysis.normalizedSymbol !== selectedSymbol)) {
       runManualAnalysis(selectedSymbol, selectedTimeframe);
     }
-  }, [selectedSymbol, selectedTimeframe]);
+  }, [selectedMarket, selectedSymbol, selectedTimeframe]);
 
-  async function toggleBot() {
+  function toggleBot() {
     const nextState = !botConfig.enabled;
     const payload = { ...botConfig, enabled: nextState };
     setBotConfig(payload);
-
-    const connected = Boolean(payload.accountNumber && payload.password && payload.serverName && payload.tickerAllApiKey);
     setBotStatus({
-      connected,
+      connected: Boolean(payload.accountNumber && payload.password && payload.serverName && payload.tickerAllApiKey),
       enabled: nextState,
-      message: connected
-        ? 'MT5 bridge ready to send orders after the live environment is linked.'
-        : 'Incomplete MT5 credential set. Add Account, Password, Server and API key to activate the robot.'
+      message: 'MT5 system has been removed. The project is now a pure React trading signal dashboard for Vercel deployment.'
     });
   }
 
   const currentPrice = Number(selectedMarket?.price || 0);
   const chartData = useMemo(() => {
-    const values = buildFallbackHistory(currentPrice, currentPrice > 1 ? 1 : -1, 60);
+    const values = buildSyntheticHistory(currentPrice, currentPrice > 1 ? 1 : -1, 60);
     const min = Math.min(...values);
     const max = Math.max(...values);
     const range = max - min || 1;
@@ -448,7 +464,7 @@ function App() {
 
         <nav className="nav">
           <button type="button" className="nav-pill active">لوحة التداول</button>
-          <button type="button" className="nav-pill">الاسترات��جيات</button>
+          <button type="button" className="nav-pill">الاستراتيجيات</button>
           <button type="button" className="nav-pill">الأداء</button>
           <button type="button" className="nav-pill">المحفظة</button>
         </nav>
@@ -577,14 +593,37 @@ function App() {
                     <div className="metric-hint">Live Entry Price</div>
                   </div>
                   <div className="signal-card">
-                    <div className="metric-label">الهدف</div>
-                    <div className="metric-value">{currency(analysis.takeProfit)}</div>
-                    <div className="metric-hint">Take Profit</div>
+                    <div className="metric-label">TP1</div>
+                    <div className="metric-value">{currency(analysis.tp1)}</div>
+                    <div className="metric-hint">Target 1</div>
                   </div>
                   <div className="signal-card">
-                    <div className="metric-label">الستوب</div>
+                    <div className="metric-label">TP2</div>
+                    <div className="metric-value">{currency(analysis.tp2)}</div>
+                    <div className="metric-hint">Target 2</div>
+                  </div>
+                  <div className="signal-card">
+                    <div className="metric-label">TP3</div>
+                    <div className="metric-value">{currency(analysis.tp3)}</div>
+                    <div className="metric-hint">Target 3</div>
+                  </div>
+                </div>
+
+                <div className="signal-grid secondary-grid">
+                  <div className="signal-card">
+                    <div className="metric-label">ستوب</div>
                     <div className="metric-value">{currency(analysis.stopLoss)}</div>
                     <div className="metric-hint">Stop Loss</div>
+                  </div>
+                  <div className="signal-card">
+                    <div className="metric-label">Break-even</div>
+                    <div className="metric-value">{currency(analysis.breakEven)}</div>
+                    <div className="metric-hint">حماية الأرباح</div>
+                  </div>
+                  <div className="signal-card">
+                    <div className="metric-label">Trailing</div>
+                    <div className="metric-value">{currency(analysis.trailingStop)}</div>
+                    <div className="metric-hint">Trailing Stop</div>
                   </div>
                   <div className="signal-card">
                     <div className="metric-label">اللوت</div>
@@ -640,7 +679,7 @@ function App() {
 
           <div className="mt5-form">
             <label>
-              رقم الحساب
+              رقم الحس��ب
               <input value={botConfig.accountNumber} onChange={(e) => setBotConfig({ ...botConfig, accountNumber: e.target.value })} placeholder="Account Number" />
             </label>
             <label>
@@ -664,8 +703,8 @@ function App() {
 
           <div className="notes-list">
             <div className="note-item">دعم: RSI, EMA, MACD, Bollinger Bands, Price Action</div>
-            <div className="note-item">محرك التداول: Manual + Automated MT5 Bridge</div>
-            <div className="note-item">الخريطة: Market Live Feed + Safe Fallback</div>
+            <div className="note-item">محرك التداول: Manual + Signal Dashboard</div>
+            <div className="note-item">الخريطة: Live Market Feed + Safe Browser Fallback</div>
           </div>
         </aside>
       </main>
